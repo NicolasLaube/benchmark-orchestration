@@ -1,0 +1,31 @@
+Étapes de construction: 
+0. Définir les contrats de données
+1. Installer Ollama + récupérer le modèle
+2. Tester un appel Ollama brut
+3. Créer l’inference service FastAPI minimal
+4. Ajouter le rate limiter dans l’inference service
+5. Créer l’orchestrateur séquentiel minimal
+6. Ajouter concurrency + retries
+7. Ajouter adaptation AIMD
+8. Ajouter observability + results report
+
+V1: 
+1. Ollama répond.
+2. FastAPI /infer répond.
+3. queue.jsonl est lu.
+4. benchmark.csv est lu.
+5. l’orchestrateur appelle /infer une question après l’autre.
+6. le grading marche.
+7. results.json est écrit.
+
+V2: 
+V1.5 = async + concurrency fixe
+V2 = retries + 429 + Retry-After
+V2.5 = AIMD
+V3 = observability terminal
+
+Réflexions pour aller plus loin: 
+- Graphana
+- Prometheus metrics
+- Loki logs
+- Tempo traces

@@ -236,3 +236,86 @@ AI tooling was used to accelerate boilerplate generation, review edge cases in t
 
 The system design, tradeoff decisions, load-testing behavior, and final implementation were manually reviewed and tested end-to-end.
 
+
+
+# Architecture 
+
+```mermaid
+flowchart LR
+    %% Inputs
+    Q[queue.jsonl<br/>Benchmark runs]
+    B[benchmark.csv<br/>Questions + expected answers]
+
+    %% Orchestrator
+    subgraph O[Benchmark Orchestrator]
+        QL[Queue loader]
+        BL[Benchmark loader]
+        S[Adaptive scheduler<br/>AIMD + Retry-After]
+        C[HTTP client]
+        G[Grader<br/>substring match]
+        M[Metrics collector]
+        R[Reporter]
+    end
+
+    %% Service
+    subgraph IS[Rate-limited Inference Service]
+        API[FastAPI<br/>POST /infer]
+        CL[Concurrency limiter]
+        RL[RPM limiter]
+        OC[Ollama client]
+    end
+
+    %% Model
+    OM[Ollama<br/>qwen2.5:0.5b]
+
+    %% Outputs
+    OUT[results.json<br/>summary metrics]
+    RESP[responses.jsonl<br/>per-question results]
+    LIVE[Terminal live view<br/>progress / throughput / latency / 429s]
+
+    Q --> QL
+    QL --> BL
+    B --> BL
+    BL --> S
+    S --> C
+    C -->|HTTP POST /infer| API
+
+    API --> CL
+    CL --> RL
+    RL --> OC
+    OC -->|POST /api/generate| OM
+    OM --> OC
+    OC --> API
+
+    API -->|200 answer| C
+    API -->|429 Retry-After| C
+
+    C --> S
+    S --> G
+    G --> M
+    M --> R
+
+    M --> LIVE
+    R --> OUT
+    R --> RESP
+```
+
+```mermaid
+sequenceDiagram
+    participant O as Orchestrator
+    participant S as Inference Service
+    participant M as Ollama
+
+    O->>S: POST /infer question
+    alt capacity available
+        S->>M: /api/generate
+        M-->>S: model response
+        S-->>O: 200 answer
+        O->>O: record latency + grade answer
+        O->>O: slowly increase target RPS/concurrency
+    else RPM or concurrency limit reached
+        S-->>O: 429 Too Many Requests + Retry-After
+        O->>O: back off target RPS/concurrency
+        O->>O: requeue request for retry
+    end
+```
