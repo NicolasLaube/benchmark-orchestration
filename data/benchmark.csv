@@ -1,0 +1,101 @@
+id,question,expected_answer
+1,2+2?,4
+2,Sky color?,Blue
+3,H2O?,Water
+4,Cat sound?,Meow
+5,Smallest prime?,2
+6,Pi to 2 decimals?,3.14
+7,Days in a week?,7
+8,Fastest land animal?,Cheetah
+9,What is the capital of France?,Paris
+10,Who wrote Hamlet?,Shakespeare
+11,What is the largest planet in our solar system?,Jupiter
+12,What is the chemical symbol for gold?,Au
+13,How many continents are there?,7
+14,Who painted the Mona Lisa?,Leonardo da Vinci
+15,What is the capital of Australia?,Canberra
+16,What gas do plants absorb from the atmosphere?,Carbon dioxide
+17,Who discovered penicillin?,Alexander Fleming
+18,What planet is known as the Red Planet?,Mars
+19,Who wrote 1984?,George Orwell
+20,What is the longest river in the world?,Nile
+21,"A train leaves Station A at 9:00 AM travelling east at 60 km/h. Another train leaves Station B, which is 300 km east of Station A, at 10:00 AM travelling west at 90 km/h. At what time do they meet?",11:36 AM
+22,What is the 13th Fibonacci number (with F1=1 and F2=1)?,233
+23,"If a shirt costs $80 after a 20% discount, what was the original price in dollars?",100
+24,What is log base 2 of 1024?,10
+25,How many distinct ways can you arrange the letters of the word BANANA?,60
+26,What is the derivative of sin(x)?,cos(x)
+27,What is the sum of the interior angles of a heptagon in degrees?,900
+28,What is the greatest common divisor of 84 and 126?,42
+29,Evaluate the limit as x approaches 0 of sin(x)/x.,1
+30,"What is the determinant of the 2x2 matrix [[1,2],[3,4]]?",-2
+31,Define entropy.,A measure of disorder or randomness in a system.
+32,What does DNA stand for?,Deoxyribonucleic acid
+33,What does HTTP stand for?,HyperText Transfer Protocol
+34,What is the time complexity of binary search on a sorted array?,O(log n)
+35,"What HTTP status code indicates ""Too Many Requests""?",429
+36,"In SQL, what keyword is used to remove duplicate rows from a result set?",DISTINCT
+37,"What is the output of the JavaScript expression: typeof null ?",object
+38,"You are given the following Python snippet: x = [1,2,3]; y = x; y.append(4); print(len(x)). What does it print?",4
+39,What is the default port for HTTPS?,443
+40,"In Git, which command shows the working tree status?",git status
+41,Hello in Spanish?,Hola
+42,Goodbye in French?,Au revoir
+43,Currency of Japan?,Yen
+44,Currency of Vietnam?,Dong
+45,Capital of Mongolia?,Ulaanbaatar
+46,Capital of Bhutan?,Thimphu
+47,Capital of Liechtenstein?,Vaduz
+48,Which country has the most time zones?,France
+49,On which river does Budapest sit?,Danube
+50,What is the smallest country in the world by area?,Vatican City
+51,In what year did the Berlin Wall fall?,1989
+52,Who was the first emperor of Rome?,Augustus
+53,Which empire was ruled by Genghis Khan?,Mongol Empire
+54,The Magna Carta was signed in what year?,1215
+55,Which civilization built Machu Picchu?,Inca
+56,What is the chemical formula for glucose?,C6H12O6
+57,What organelle is known as the powerhouse of the cell?,Mitochondrion
+58,What is the SI unit of electrical resistance?,Ohm
+59,What is the SI base unit of amount of substance?,Mole
+60,What is the speed of sound in air at sea level in m/s (approx)?,343
+61,At what temperature in Celsius does pure water boil at sea level?,100
+62,How many pairs of chromosomes do humans normally have?,23
+63,What is the name of the boundary around a black hole beyond which nothing can escape?,Event horizon
+64,Atomic number of uranium?,92
+65,"In a 12-hour analog clock, what is the angle in degrees between the hour and minute hands at 3:00?",90
+66,"Read the following passage and answer the question. ""In 1969, NASA's Apollo 11 mission successfully landed the first humans on the Moon. Astronaut Neil Armstrong became the first person to step onto the lunar surface, followed by Buzz Aldrin. Michael Collins remained in lunar orbit aboard the command module Columbia."" Question: Who remained in lunar orbit during the Apollo 11 landing?",Michael Collins
+67,"Passage: ""The Suez Canal, opened in 1869, connects the Mediterranean Sea to the Red Sea. It provides the shortest maritime route between Europe and the lands lying around the Indian and western Pacific Oceans."" Question: In what year did the Suez Canal open?",1869
+68,"Passage: ""In 1928, Alexander Fleming returned from a holiday to find that a mould called Penicillium notatum had contaminated a bacterial culture in his lab. He noticed the mould was killing the bacteria, leading to the discovery of penicillin."" Question: What was the name of the mould Fleming observed?",Penicillium notatum
+69,"Long context. Passage: ""The Krebs cycle, also known as the citric acid cycle or the tricarboxylic acid (TCA) cycle, is a series of chemical reactions used by all aerobic organisms to release stored energy through the oxidation of acetyl-CoA derived from carbohydrates, fats, and proteins. It takes place in the mitochondrial matrix in eukaryotes. The cycle was identified in 1937 by Hans Krebs, who received the Nobel Prize in Physiology or Medicine in 1953 for his discovery."" Question: In what year was Hans Krebs awarded the Nobel Prize?",1953
+70,"Long context. Passage: ""Black holes can be classified by mass into three primary categories: stellar-mass black holes, formed from the gravitational collapse of massive stars; intermediate-mass black holes; and supermassive black holes, found at the centres of most galaxies, including Sagittarius A* at the centre of the Milky Way."" Question: What is the name of the supermassive black hole at the centre of the Milky Way?",Sagittarius A*
+71,"Consider this scenario: Alice, Bob, and Carol each have a different favourite colour among red, green, and blue. Alice does not like red. Bob's favourite is not green. Carol's favourite is blue. What is Alice's favourite colour?",Green
+72,"A farmer has 17 sheep, and all but 9 die. How many are left?",9
+73,"If yesterday was Sunday, what day will it be the day after tomorrow?",Wednesday
+74,"You are running a race and you overtake the person in second place. What position are you in now?",Second
+75,"A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost in cents?",5
+76,"If it takes 5 machines 5 minutes to make 5 widgets, how long would it take 100 machines to make 100 widgets, in minutes?",5
+77,Spell the word ""necessary"" backwards.,yrassecen
+78,"How many letter R's are in the word ""strawberry""?",3
+79,"What is the next number in the sequence 1, 1, 2, 3, 5, 8, ?",13
+80,"Identify the odd one out: apple, banana, carrot, grape.",carrot
+81,How many vowels are in the word ""education""?,5
+82,"What is the ASCII value of the uppercase letter A?",65
+83,"You buy 3 apples at $0.75 each and 2 loaves of bread at $2.50 each. What is the total cost in dollars?",7.25
+84,"A car travels 240 km in 3 hours. What is its average speed in km/h?",80
+85,"The angles of a triangle are in the ratio 2:3:4. What is the largest angle in degrees?",80
+86,Solve for x: 3x - 7 = 14.,7
+87,"What is the sum 1 + 2 + 3 + ... + 100?",5050
+88,How many degrees are in each interior angle of a regular pentagon?,108
+89,"List the planets of the solar system in order from the Sun, comma-separated.","Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune"
+90,"Name the four DNA nucleotide bases, comma-separated alphabetical.","Adenine, Cytosine, Guanine, Thymine"
+91,"Multi-part: What is the largest planet and the smallest planet in our solar system, comma-separated, in that order?","Jupiter, Mercury"
+92,"Multi-part: Who wrote ""Pride and Prejudice"" and in what year was it first published, comma-separated?","Jane Austen, 1813"
+93,"Tricky: How many months have 28 days?",12
+94,"Tricky: What weighs more, a pound of feathers or a pound of bricks?",They weigh the same
+95,"Empty answer test (the correct answer is the literal word ""none""). Which prime number is even and greater than 2?",none
+96,Who composed the opera The Magic Flute?,Mozart
+97,"In music theory, how many semitones are in an octave?",12
+98,Who directed the film Pulp Fiction?,Quentin Tarantino
+99,Who is the author of The Brothers Karamazov?,Dostoevsky
+100,"In Greek mythology, who is the king of the gods?",Zeus

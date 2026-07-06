@@ -219,8 +219,7 @@ __marimo__/
 
 
 # Custom additions
-data/*.csv
-data/*.json
 results/*.json
 results/*.csv
 results/*.txt
+.DS_Store
