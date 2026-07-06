@@ -46,10 +46,11 @@ Pas de gestion optimisée des erreurs 429.
 - améliorer les stratégie de scheduler
     - mettre en place des calculs en parallèle
     - augmenter le nombre de requêtes.
+- les briques ne sont pas réllement testées (tout à la main)
 
 
-
-V2: En v2, mettre en place une stratégie plus optimisée
+V2: Ajouter un peu de concurrency, des retries et de l'async
+- ajouter des tests automatiques
 
 
 
