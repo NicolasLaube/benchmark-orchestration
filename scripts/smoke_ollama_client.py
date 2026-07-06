@@ -10,9 +10,7 @@ async def main() -> None:
         timeout_sec=120.0,
     )
 
-    answer = await client.generate(
-        "What is the capital of France?"
-    )
+    answer = await client.generate("What is the capital of France?")
 
     print("Response from Ollama:", answer)
 

@@ -41,9 +41,7 @@ class MetricsCollector:
         correct_results = [result for result in successful_results if result.correct]
 
         latencies = [
-            result.latency_ms
-            for result in successful_results
-            if result.latency_ms is not None
+            result.latency_ms for result in successful_results if result.latency_ms is not None
         ]
 
         successful_requests = len(successful_results)
@@ -55,9 +53,7 @@ class MetricsCollector:
             "failure_count": failure_count,
             "accuracy": self._safe_ratio(len(correct_results), successful_requests),
             "throughput_req_s": (
-                round(total_requests / total_wall_time_sec, 3)
-                if total_wall_time_sec > 0
-                else 0.0
+                round(total_requests / total_wall_time_sec, 3) if total_wall_time_sec > 0 else 0.0
             ),
             "latency_ms": {
                 "p50": median(latencies) if latencies else None,
@@ -82,17 +78,11 @@ class MetricsCollector:
             successful_results = [
                 result for result in benchmark_results if result.status == "success"
             ]
-            failed_results = [
-                result for result in benchmark_results if result.status == "failed"
-            ]
-            correct_results = [
-                result for result in successful_results if result.correct
-            ]
+            failed_results = [result for result in benchmark_results if result.status == "failed"]
+            correct_results = [result for result in successful_results if result.correct]
 
             latencies = [
-                result.latency_ms
-                for result in successful_results
-                if result.latency_ms is not None
+                result.latency_ms for result in successful_results if result.latency_ms is not None
             ]
 
             successful_requests = len(successful_results)

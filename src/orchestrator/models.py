@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 from typing import Literal
 
@@ -8,12 +7,15 @@ class BenchmarkJob:
     id: str
     path: str
 
+
 @dataclass(frozen=True)
 class BenchmarkQuestion:
     benchmark_id: str
     question_id: str
     question: str
     expected_answer: str
+
+
 @dataclass(frozen=True)
 class InferenceResult:
     answer: str

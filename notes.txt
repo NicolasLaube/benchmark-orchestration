@@ -31,7 +31,8 @@ Prérequis fonctionnel:
 7. Ajouter adaptation AIMD
 8. Ajouter observability + results report
 
-V1: En v1, faire un MVP simple sans stratégie : stratégie séquentielle d'envoie des requêtes.
+V1: Baseline end to end 
+En v1, faire un MVP simple sans stratégie : stratégie séquentielle d'envoie des requêtes.
 Pas de gestion optimisée des erreurs 429. 
 1. Ollama répond.
 2. FastAPI /infer répond.
@@ -49,10 +50,20 @@ Pas de gestion optimisée des erreurs 429.
 - les briques ne sont pas réllement testées (tout à la main)
 
 
-V2: Ajouter un peu de concurrency, des retries et de l'async
-- ajouter des tests automatiques
+V2: Robust concurrent orchestrator
+Ajouter un peu de concurrency, des retries et de l'async
+- ajouter des tests automatiques (v)
+- ajouter logs simples
+- envoyer N requêtes en parallèle 
+- gérer les 429 proprement 
+- respecter Retry-After 
+- retry les requêtes 
+- compter retry_count 
+- compter http_429_count 
+- ne mettre failed qu’après max_retries
 
 
+V3: Adaptive orchestrator
 
 V1.5 = async + concurrency fixe
 V2 = retries + 429 + Retry-After

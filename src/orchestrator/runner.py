@@ -1,76 +1,47 @@
-import time
+import logging
 
 from orchestrator.loaders.loader_benchmark import LoaderCsvBenchmark
 from orchestrator.loaders.loader_queue import LoaderJsonlQueue
-from orchestrator.inference_client import InferenceClient, InferenceClientError
 from orchestrator.models import BenchmarkQuestion, QuestionResult
-from orchestrator.graders.grader import SubstringGrader
+from orchestrator.schedulers.scheduler import Scheduler
+
+logger = logging.getLogger(__name__)
+
 
 class Runner:
     def __init__(
         self,
-        queue_loader: LoaderJsonlQueue,
-        benchmark_loader: LoaderCsvBenchmark,
-        inference_client: InferenceClient,
-        grader: SubstringGrader,
+        loader_queue: LoaderJsonlQueue,
+        loader_benchmark: LoaderCsvBenchmark,
+        scheduler: Scheduler,
     ) -> None:
-        self.queue_loader = queue_loader
-        self.benchmark_loader = benchmark_loader
-        self.inference_client = inference_client
-        self.grader = grader
+        self.loader_queue = loader_queue
+        self.loader_benchmark = loader_benchmark
+        self.scheduler = scheduler
 
     async def run(self, queue_path: str) -> list[QuestionResult]:
-        jobs = self.queue_loader.load(queue_path)
+        logger.info("Loading queue from %s", queue_path)
+
+        jobs = self.loader_queue.load(queue_path)
+        logger.info("Loaded %d benchmark jobs", len(jobs))
 
         all_questions: list[BenchmarkQuestion] = []
 
         for job in jobs:
-            questions = self.benchmark_loader.load(job)
+            questions = self.loader_benchmark.load(job)
             all_questions.extend(questions)
-            # TODO: 
 
-        results: list[QuestionResult] = []
+            logger.info(
+                "Loaded benchmark_id=%s with %d questions from %s",
+                job.id,
+                len(questions),
+                job.path,
+            )
 
-        for question in all_questions:
-            result = await self._run_one(question)
-            results.append(result)
+        logger.info("Loaded %d benchmark questions", len(all_questions))
+
+        results = await self.scheduler.run_questions(all_questions)
+
+        logger.info("Finished processing %d questions", len(results))
 
         return results
-
-    async def _run_one(self, question: BenchmarkQuestion) -> QuestionResult:
-        try:
-            inference_result = await self.inference_client.infer(question.question)
-
-            grade_result = self.grader.grade(
-                answer=inference_result.answer,
-                expected_answer=question.expected_answer,
-            )
-
-            return QuestionResult(
-                benchmark_id=question.benchmark_id,
-                question_id=question.question_id,
-                question=question.question,
-                expected_answer=question.expected_answer,
-                answer=inference_result.answer,
-                correct=grade_result.correct,
-                score=grade_result.score,
-                latency_ms=inference_result.latency_ms,
-                attempts=1,
-                status="success",
-                error=None,
-            )
-
-        except InferenceClientError as exc:
-            return QuestionResult(
-                benchmark_id=question.benchmark_id,
-                question_id=question.question_id,
-                question=question.question,
-                expected_answer=question.expected_answer,
-                answer=None,
-                correct=False,
-                score=0.0,
-                latency_ms=None,
-                attempts=1,
-                status="failed",
-                error=str(exc),
-            )

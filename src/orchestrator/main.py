@@ -1,15 +1,27 @@
 import asyncio
+import logging
 import time
 
 import typer
-from orchestrator.loaders.loader_queue import LoaderJsonlQueue
 
-from orchestrator.loaders.loader_benchmark import LoaderCsvBenchmark
 from orchestrator.graders.grader import SubstringGrader
 from orchestrator.inference_client import InferenceClient
+from orchestrator.loaders.loader_benchmark import LoaderCsvBenchmark
+from orchestrator.loaders.loader_queue import LoaderJsonlQueue
 from orchestrator.metrics import MetricsCollector
 from orchestrator.reporter import JsonReporter
 from orchestrator.runner import Runner
+from orchestrator.schedulers.scheduler_concurrent import FixedConcurrencyScheduler
+
+
+def configure_logging(log_level: str) -> None:
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def run_benchmark(
@@ -29,17 +41,40 @@ def run_benchmark(
         120.0,
         help="HTTP timeout in seconds.",
     ),
+    max_concurrency: int = typer.Option(
+        4,
+        help="Maximum orchestrator-side concurrency.",
+    ),
+    max_retries: int = typer.Option(
+        3,
+        help="Maximum retries per question.",
+    ),
+    log_level: str = typer.Option(
+        "INFO",
+        help="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).",
+    ),
+    progress_every: int = typer.Option(
+        10,
+        help="Log progress every N completed requests.",
+    ),
 ) -> None:
     async def _run() -> None:
         async with InferenceClient(
             endpoint=endpoint,
             timeout_sec=timeout_sec,
         ) as inference_client:
+            configure_logging(log_level)
+
             runner = Runner(
-                benchmark_loader=LoaderCsvBenchmark(),
-                queue_loader=LoaderJsonlQueue(),
-                grader=SubstringGrader(),
-                inference_client=inference_client,
+                loader_benchmark=LoaderCsvBenchmark(),
+                loader_queue=LoaderJsonlQueue(),
+                scheduler=FixedConcurrencyScheduler(
+                    inference_client=inference_client,
+                    grader=SubstringGrader(),
+                    max_concurrency=max_concurrency,
+                    max_retries=max_retries,
+                    progress_every=progress_every,
+                ),
             )
 
             start = time.perf_counter()

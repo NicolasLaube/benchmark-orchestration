@@ -10,7 +10,7 @@ serve:
 	uv run inference-service --model qwen2.5:0.5b --rpm 60 --max-concurrency 4 --port 8000
 
 benchmark:
-	uv run orchestrator --queue data/queue_test.jsonl --endpoint http://localhost:8000/infer --out results/run.json
+	uv run orchestrator --queue data/queue.jsonl --endpoint http://localhost:8000/infer --out results/run.json --log-level INFO
 
 lint:
 	uv run ruff check .
@@ -20,3 +20,12 @@ format:
 
 clean:
 	rm -f results/*.json results/*.jsonl results/*.csv
+
+format:
+	uv run ruff format .
+
+lint:
+	uv run ruff check .
+
+lint-fix:
+	uv run ruff check . --fix

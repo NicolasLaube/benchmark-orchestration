@@ -40,12 +40,14 @@ class LoaderCsvBenchmark:
 
                 if not question:
                     raise ValueError(
-                        f"Missing question in benchmarkJobBenchmarkJob CSV {csv_path} at row {row_number}"
+                        f"Missing question in benchmarkJobBenchmarkJob CSV {csv_path} at row"
+                        + f" {row_number}"
                     )
 
                 if not expected_answer:
                     raise ValueError(
-                        f"Missing expected_answer in benchmarkJobBenchmarkJob CSV {csv_path} at row {row_number}"
+                        f"Missing expected_answer in benchmarkJobBenchmarkJob CSV {csv_path} at row"
+                        + f" {row_number}"
                     )
 
                 questions.append(
