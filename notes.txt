@@ -1,3 +1,25 @@
+Ce que j'ai compris: 
+- le service d'inférence gère les pics de charge via back pressure (erreur 429, Too many requests)
+- le service d'inférence n'a pas de queue 
+- il sera intéressant de développer une stratégie d'optimisation de charge sur le service d'inférence 
+    - par ex monter la charge jusqu'à capacité maximale (conservative probing), similaire à strat TCP.
+
+
+
+Prérequis fonctionnel:
+- inférence
+    - il est possible de lancer le service avec une seule commande simple
+    - il est possible de changer le rpm (60 par défaut)
+    - il est possible de changer concurrency (4 par défaut)
+- orchestration
+    - il est possible de lancer le service avec une seule commande simple
+    - l'orchestration fait du conservation probing
+    - il calcul les infos sur le benchmarking (pas de requirements spécifiés)
+        - prendre accuracy
+
+
+
+
 Étapes de construction: 
 0. Définir les contrats de données
 1. Installer Ollama + récupérer le modèle
@@ -9,16 +31,28 @@
 7. Ajouter adaptation AIMD
 8. Ajouter observability + results report
 
-V1: 
+V1: En v1, faire un MVP simple sans stratégie : stratégie séquentielle d'envoie des requêtes.
+Pas de gestion optimisée des erreurs 429. 
 1. Ollama répond.
 2. FastAPI /infer répond.
 3. queue.jsonl est lu.
 4. benchmark.csv est lu.
-5. l’orchestrateur appelle /infer une question après l’autre.
-6. le grading marche.
+5. l’orchestrateur appelle /infer une question après l’autre (strat séquentielle)
+6. le grading simple marche.
 7. results.json est écrit.
 
-V2: 
+À améliorer dans V1:
+- éviter de charger toutes les données du benchmark dans le cache de l'orchestration (peut avoir des capacités limités aussi)
+- améliorer les stratégie de scheduler
+    - mettre en place des calculs en parallèle
+    - augmenter le nombre de requêtes.
+
+
+
+V2: En v2, mettre en place une stratégie plus optimisée
+
+
+
 V1.5 = async + concurrency fixe
 V2 = retries + 429 + Retry-After
 V2.5 = AIMD
@@ -29,3 +63,8 @@ Réflexions pour aller plus loin:
 - Prometheus metrics
 - Loki logs
 - Tempo traces
+
+
+
+À faire:
+- Créer une architecture très modulaire pour pouvoir upgrader les différentes briques au fil de l'eau. 

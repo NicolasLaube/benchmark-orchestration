@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-orchestrator = "ochestrator:main"
+orchestrator = "orchestrator.main:app_cli"
 inference-service = "inference_service.main:app_cli"
 
 [build-system]
