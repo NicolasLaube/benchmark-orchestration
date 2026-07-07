@@ -1,0 +1,7 @@
+id,question,expected_answer
+1,2+2?,4
+2,Sky color?,Blue
+3,H2O?,Water
+4,Cat sound?,Meow
+5,Smallest prime?,2
+6,Pi to 2 decimals?,3.14
