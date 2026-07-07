@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import random
+import time
 
 from orchestrator.graders.grader import SubstringGrader
 from orchestrator.inference_client import (
@@ -41,7 +43,10 @@ class FixedConcurrencyScheduler:
         self.failure_count = 0
         self.retry_count = 0
         self.rate_limited_count = 0
-        self._stats_lock = asyncio.Lock()
+
+        self.pause_until = 0.0
+        self.pause_lock = asyncio.Lock()
+        self.stats_lock = asyncio.Lock()
 
     async def run_questions(
         self,
@@ -61,6 +66,8 @@ class FixedConcurrencyScheduler:
             for question in questions
         ]
 
+        results = await asyncio.gather(*tasks)
+
         logger.info(
             "Scheduler finished: completed=%d success=%d failures=%d retries=%d rate_limited=%d",
             self.completed_count,
@@ -70,7 +77,7 @@ class FixedConcurrencyScheduler:
             self.rate_limited_count,
         )
 
-        return await asyncio.gather(*tasks)
+        return results
 
     async def _run_one_with_semaphore(
         self,
@@ -92,10 +99,14 @@ class FixedConcurrencyScheduler:
         attempts = 0
         last_error: str | None = None
 
-        while attempts <= self.max_retries:
+        max_attempts = self.max_retries + 1
+
+        while attempts < max_attempts:
             attempts += 1
 
             try:
+                await self._respect_global_pause()
+
                 inference_result = await self.inference_client.infer(question.question)
 
                 grade_result = self.grader.grade(
@@ -129,42 +140,51 @@ class FixedConcurrencyScheduler:
             except InferenceRateLimitedError as exc:
                 last_error = str(exc)
 
-                self.rate_limited_count += 1
+                async with self.stats_lock:
+                    self.rate_limited_count += 1
 
-                if attempts > self.max_retries:
+                if attempts >= max_attempts:
+                    logger.error(
+                        "Rate limit final failure benchmark_id=%s question_id=%s attempts=%d retry_after=%ss",
+                        question.benchmark_id,
+                        question.question_id,
+                        attempts,
+                        exc.retry_after_sec,
+                    )
                     break
 
-                self.retry_count += 1
-
-                logger.warning(
-                    "Rate limited benchmark_id=%s question_id=%s attempt=%d retry_after=%ss",
-                    question.benchmark_id,
-                    question.question_id,
-                    attempts,
-                    exc.retry_after_sec,
-                )
-
-                await asyncio.sleep(exc.retry_after_sec)
+                await self._handle_rate_limit_retry(exc, question, attempts)
 
             except InferenceClientError as exc:
                 last_error = str(exc)
 
-                if attempts > self.max_retries:
+                if attempts >= max_attempts:
+                    logger.error(
+                        "Inference final failure benchmark_id=%s question_id=%s attempts=%d error=%s",
+                        question.benchmark_id,
+                        question.question_id,
+                        attempts,
+                        exc,
+                    )
                     break
 
-                self.retry_count += 1
+                async with self.stats_lock:
+                    self.retry_count += 1
+
                 backoff_sec = min(2 ** (attempts - 1), self.max_backoff_sec)
+                jitter = random.uniform(0.0, 0.25)
+                sleep_sec = backoff_sec + jitter
 
                 logger.warning(
-                    "Inference error benchmark_id=%s question_id=%s attempt=%d backoff=%ss error=%s",
+                    "Inference error benchmark_id=%s question_id=%s attempt=%d backoff=%.2fs error=%s",
                     question.benchmark_id,
                     question.question_id,
                     attempts,
-                    backoff_sec,
+                    sleep_sec,
                     exc,
                 )
 
-                await asyncio.sleep(backoff_sec)
+                await asyncio.sleep(sleep_sec)
 
         return QuestionResult(
             benchmark_id=question.benchmark_id,
@@ -185,7 +205,7 @@ class FixedConcurrencyScheduler:
         result: QuestionResult,
         total: int,
     ) -> None:
-        async with self._stats_lock:
+        async with self.stats_lock:
             self.completed_count += 1
 
             if result.status == "success":
@@ -203,3 +223,39 @@ class FixedConcurrencyScheduler:
                     self.retry_count,
                     self.rate_limited_count,
                 )
+
+    async def _respect_global_pause(self) -> None:
+        async with self.pause_lock:
+            delay = self.pause_until - time.monotonic()
+
+        if delay > 0:
+            logger.info("Global backpressure pause: sleeping %.2fs", delay)
+            await asyncio.sleep(delay)
+
+    async def _set_global_pause(self, retry_after_sec: int) -> None:
+        jitter = random.uniform(0.0, 0.25)
+        pause_until = time.monotonic() + retry_after_sec + jitter
+
+        async with self.pause_lock:
+            self.pause_until = max(self.pause_until, pause_until)
+
+    async def _handle_rate_limit_retry(
+        self,
+        exc: InferenceRateLimitedError,
+        question: BenchmarkQuestion,
+        attempts: int,
+    ) -> None:
+        await self._set_global_pause(exc.retry_after_sec)
+
+        async with self.stats_lock:
+            self.retry_count += 1
+
+        logger.warning(
+            "Rate limited benchmark_id=%s question_id=%s attempt=%d retry_after=%ss",
+            question.benchmark_id,
+            question.question_id,
+            attempts,
+            exc.retry_after_sec,
+        )
+
+        await self._respect_global_pause()

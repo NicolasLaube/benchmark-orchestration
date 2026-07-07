@@ -1,0 +1,24 @@
+id,question,expected_answer
+1,2+2?,4
+2,Sky color?,Blue
+3,H2O?,Water
+4,Cat sound?,Meow
+5,Smallest prime?,2
+6,Pi to 2 decimals?,3.14
+84,"A car travels 240 km in 3 hours. What is its average speed in km/h?",80
+85,"The angles of a triangle are in the ratio 2:3:4. What is the largest angle in degrees?",80
+86,Solve for x: 3x - 7 = 14.,7
+87,"What is the sum 1 + 2 + 3 + ... + 100?",5050
+88,How many degrees are in each interior angle of a regular pentagon?,108
+89,"List the planets of the solar system in order from the Sun, comma-separated.","Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune"
+90,"Name the four DNA nucleotide bases, comma-separated alphabetical.","Adenine, Cytosine, Guanine, Thymine"
+91,"Multi-part: What is the largest planet and the smallest planet in our solar system, comma-separated, in that order?","Jupiter, Mercury"
+92,"Multi-part: Who wrote ""Pride and Prejudice"" and in what year was it first published, comma-separated?","Jane Austen, 1813"
+93,"Tricky: How many months have 28 days?",12
+94,"Tricky: What weighs more, a pound of feathers or a pound of bricks?",They weigh the same
+95,"Empty answer test (the correct answer is the literal word ""none""). Which prime number is even and greater than 2?",none
+96,Who composed the opera The Magic Flute?,Mozart
+97,"In music theory, how many semitones are in an octave?",12
+98,Who directed the film Pulp Fiction?,Quentin Tarantino
+99,Who is the author of The Brothers Karamazov?,Dostoevsky
+100,"In Greek mythology, who is the king of the gods?",Zeus

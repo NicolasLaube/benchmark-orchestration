@@ -53,8 +53,8 @@ Pas de gestion optimisée des erreurs 429.
 V2: Robust concurrent orchestrator
 Ajouter un peu de concurrency, des retries et de l'async
 - ajouter des tests automatiques (v)
-- ajouter logs simples
-- envoyer N requêtes en parallèle 
+- ajouter logs simples (v)
+- envoyer N requêtes en parallèle (v)
 - gérer les 429 proprement 
 - respecter Retry-After 
 - retry les requêtes 
@@ -64,6 +64,9 @@ Ajouter un peu de concurrency, des retries et de l'async
 
 
 V3: Adaptive orchestrator
+- détection de capacité
+- Dashboard rich
+
 
 V1.5 = async + concurrency fixe
 V2 = retries + 429 + Retry-After
@@ -76,7 +79,12 @@ Réflexions pour aller plus loin:
 - Loki logs
 - Tempo traces
 
-
+Idées: 
+- Graceful shutdown with resume option
+- Dashboard rich
+- Add jitter
+- voir tous les benchmark d'un coup 
+- détection de capacité
 
 À faire:
 - Créer une architecture très modulaire pour pouvoir upgrader les différentes briques au fil de l'eau. 
