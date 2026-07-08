@@ -24,6 +24,7 @@ class FixedConcurrencyScheduler:
         max_backoff_sec: float = 8.0,
         progress_every: int = 10,
     ) -> None:
+        """Scheduler that runs questions with a fixed concurrency limit and retry logic."""
 
         if max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
@@ -59,13 +60,18 @@ class FixedConcurrencyScheduler:
             self.max_retries,
         )
 
+        # The semaphore limits the number of concurrent tasks to max_concurrency.
+        # Interesting thing to note: it is better than batching because it allows for more efficient
+        # use of resources. If one task is slow, it doesn't block the others from starting.
         semaphore = asyncio.Semaphore(self.max_concurrency)
 
+        # Create a list of tasks, each of which will run a question with the semaphore.
         tasks = [
             self._run_one_with_semaphore(question, semaphore, total=len(questions))
             for question in questions
         ]
 
+        # Run all tasks concurrently, respecting the semaphore limit.
         results = await asyncio.gather(*tasks)
 
         logger.info(
@@ -137,6 +143,7 @@ class FixedConcurrencyScheduler:
                     error=None,
                 )
 
+            # Logic when the inference client returns a rate limit error (HTTP 429).
             except InferenceRateLimitedError as exc:
                 last_error = str(exc)
 
@@ -155,6 +162,7 @@ class FixedConcurrencyScheduler:
 
                 await self._handle_rate_limit_retry(exc, question, attempts)
 
+            # Logic when the inference client returns a non-rate limit error (e.g., HTTP 500).
             except InferenceClientError as exc:
                 last_error = str(exc)
 
@@ -175,7 +183,7 @@ class FixedConcurrencyScheduler:
                 jitter = random.uniform(0.0, 0.25)
                 sleep_sec = backoff_sec + jitter
 
-                logger.warning(
+                logger.error(
                     "Inference error benchmark_id=%s question_id=%s attempt=%d backoff=%.2fs error=%s",
                     question.benchmark_id,
                     question.question_id,
@@ -205,6 +213,8 @@ class FixedConcurrencyScheduler:
         result: QuestionResult,
         total: int,
     ) -> None:
+        """Records the completion of a question, updating the counts and
+        logging progress if needed."""
         async with self.stats_lock:
             self.completed_count += 1
 
@@ -233,6 +243,9 @@ class FixedConcurrencyScheduler:
             await asyncio.sleep(delay)
 
     async def _set_global_pause(self, retry_after_sec: int) -> None:
+        """Sets a global pause for all tasks to respect, based on the retry_after_sec from a
+        rate limit error. Adds a small random jitter to avoid thundering herd problems."""
+
         jitter = random.uniform(0.0, 0.25)
         pause_until = time.monotonic() + retry_after_sec + jitter
 
@@ -245,6 +258,8 @@ class FixedConcurrencyScheduler:
         question: BenchmarkQuestion,
         attempts: int,
     ) -> None:
+        """Handles the logic for retrying after a rate limit error, including setting
+        a global pause and logging."""
         await self._set_global_pause(exc.retry_after_sec)
 
         async with self.stats_lock:

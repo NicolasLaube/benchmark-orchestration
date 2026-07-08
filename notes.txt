@@ -4,6 +4,9 @@ Ce que j'ai compris:
 - il sera intéressant de développer une stratégie d'optimisation de charge sur le service d'inférence 
     - par ex monter la charge jusqu'à capacité maximale (conservative probing), similaire à strat TCP.
 
+Hypothèses: 
+- Il est préférable de monter la charge progressivement plutôt que de bombarder le service. 
+
 
 
 Prérequis fonctionnel:
