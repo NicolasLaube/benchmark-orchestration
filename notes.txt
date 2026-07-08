@@ -4,6 +4,9 @@ Ce que j'ai compris:
 - il sera intéressant de développer une stratégie d'optimisation de charge sur le service d'inférence 
     - par ex monter la charge jusqu'à capacité maximale (conservative probing), similaire à strat TCP.
 
+Hypothèses: 
+- Il est préférable de monter la charge progressivement plutôt que de bombarder le service. 
+
 
 
 Prérequis fonctionnel:
@@ -31,7 +34,8 @@ Prérequis fonctionnel:
 7. Ajouter adaptation AIMD
 8. Ajouter observability + results report
 
-V1: En v1, faire un MVP simple sans stratégie : stratégie séquentielle d'envoie des requêtes.
+V1: Baseline end to end 
+En v1, faire un MVP simple sans stratégie : stratégie séquentielle d'envoie des requêtes.
 Pas de gestion optimisée des erreurs 429. 
 1. Ollama répond.
 2. FastAPI /infer répond.
@@ -49,9 +53,22 @@ Pas de gestion optimisée des erreurs 429.
 - les briques ne sont pas réllement testées (tout à la main)
 
 
-V2: Ajouter un peu de concurrency, des retries et de l'async
-- ajouter des tests automatiques
+V2: Robust concurrent orchestrator
+Ajouter un peu de concurrency, des retries et de l'async
+- ajouter des tests automatiques (v)
+- ajouter logs simples (v)
+- envoyer N requêtes en parallèle (v)
+- gérer les 429 proprement 
+- respecter Retry-After 
+- retry les requêtes 
+- compter retry_count 
+- compter http_429_count 
+- ne mettre failed qu’après max_retries
 
+
+V3: Adaptive orchestrator
+- détection de capacité
+- Dashboard rich
 
 
 V1.5 = async + concurrency fixe
@@ -65,7 +82,12 @@ Réflexions pour aller plus loin:
 - Loki logs
 - Tempo traces
 
-
+Idées: 
+- Graceful shutdown with resume option
+- Dashboard rich
+- Add jitter
+- voir tous les benchmark d'un coup 
+- détection de capacité
 
 À faire:
 - Créer une architecture très modulaire pour pouvoir upgrader les différentes briques au fil de l'eau. 

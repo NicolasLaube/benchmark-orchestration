@@ -1,5 +1,5 @@
-from orchestrator.loaders.loader_queue import JsonlQueueLoader
 from orchestrator.loaders.loader_benchmark import CsvBenchmarkLoader
+from orchestrator.loaders.loader_queue import JsonlQueueLoader
 
 loaderQueue = JsonlQueueLoader()
 loaderBenchmark = CsvBenchmarkLoader()

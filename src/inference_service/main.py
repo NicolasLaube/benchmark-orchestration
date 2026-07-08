@@ -5,10 +5,10 @@ import typer
 import uvicorn
 from fastapi import FastAPI, HTTPException
 
+from inference_service.models import HealthResponse, InferRequest, InferResponse
 from inference_service.ollama_client import OllamaClient
 from inference_service.prompt import build_prompt
 from inference_service.rate_limiter import ConcurrencyLimiter, RpmLimiter
-from inference_service.models import HealthResponse, InferRequest, InferResponse
 
 
 def create_app(
