@@ -1,4 +1,5 @@
 import logging
+from rich.logging import RichHandler
 
 from orchestrator.loaders.loader_benchmark import LoaderCsvBenchmark
 from orchestrator.loaders.loader_queue import LoaderJsonlQueue

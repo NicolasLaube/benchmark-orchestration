@@ -4,6 +4,9 @@ import time
 
 import typer
 
+from rich.logging import RichHandler
+
+
 from orchestrator.graders.grader import SubstringGrader
 from orchestrator.inference_client import InferenceClient
 from orchestrator.loaders.loader_benchmark import LoaderCsvBenchmark
@@ -19,6 +22,14 @@ def configure_logging(log_level: str) -> None:
         level=getattr(logging, log_level.upper()),
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         datefmt="%H:%M:%S",
+        handlers=[
+            RichHandler(
+                rich_tracebacks=True,
+                show_time=True,
+                show_level=True,
+                show_path=False,
+            )
+        ],
     )
 
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -64,7 +75,6 @@ def run_benchmark(
             timeout_sec=timeout_sec,
         ) as inference_client:
             configure_logging(log_level)
-
             runner = Runner(
                 loader_benchmark=LoaderCsvBenchmark(),
                 loader_queue=LoaderJsonlQueue(),

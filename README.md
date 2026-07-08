@@ -114,6 +114,27 @@ Example:
 
 ---
 
+## V3 
+
+### Additive increase/multiplicative decrease 
+
+Hypothesis: 
+- It is better to start conservative with a low concurrency and to ramp up than starting too high (less backpressures). However, even if starting too low is safer, it may underutilize the endpoint during warm-up.
+- The HTTP contract only guarantees a 429 with Retry-After. If the service includes a structured reason, the orchestrator uses it. Otherwise, it treats the 429 as a generic overload signal.
+- I assume the configured service limits are stable during a single benchmark run (concurrency and rpm are fixed).
+
+Ideas: 
+- The orchestrator strategy can be adaptive depending whether we have the 429 origin (rpm or concurrency).
+
+We don't have information about the origin of the 429 error. 
+Thus, I imagined a two steps pipeline to find optimal parameters. 
+
+- At start, we take a low concurrency, here 1.
+- All X successes, we increase the concurrency, for example +1 every 10 successes.
+- Also, we add a timer to control the min time between the lauch of two requests. 
+- If a rate limit is caught, we decrease strongly the concurrency: `concurrency = concurrency * 0.5` for example. 
+
+
 ## Design
 
 ```text

@@ -70,6 +70,7 @@ V3: Adaptive orchestrator
 - détection de capacité
 - Dashboard rich
 
+Calculer les temps de lancement pour constater une amélioration des scores en fonction des versions. 
 
 V1.5 = async + concurrency fixe
 V2 = retries + 429 + Retry-After
