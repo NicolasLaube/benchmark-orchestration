@@ -1,6 +1,6 @@
 # tests/test_metrics.py
 
-from orchestrator.report.report_metrics_collector import MetricsCollector
+from orchestrator.report.report_metrics_collector import ReportMetricsCollector
 from orchestrator.report.report_models import QuestionResult
 
 
@@ -33,7 +33,7 @@ def test_metrics_collector_summarizes_results() -> None:
         ),
     ]
 
-    summary = MetricsCollector().summarize(
+    summary = ReportMetricsCollector().summarize(
         results=results,
         total_wall_time_sec=2.0,
     )
