@@ -14,8 +14,6 @@ class InferResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     model: str
-    rpm_limit: int
-    max_concurrency: int
 
 
 class ErrorResponse(BaseModel):

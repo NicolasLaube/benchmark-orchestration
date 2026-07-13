@@ -5,10 +5,12 @@ import typer
 import uvicorn
 from fastapi import FastAPI, HTTPException
 
-from inference_service.models import HealthResponse, InferRequest, InferResponse
-from inference_service.ollama_client import OllamaClient
-from inference_service.prompt import build_prompt
-from inference_service.rate_limiter import ConcurrencyLimiter, RpmLimiter
+from inference_service.ai_generator.ai_generator import AIGenerator
+from inference_service.ai_generator.ollama_client import OllamaClient
+from inference_service.limiters.limiter_concurrency import ConcurrencyGate, ConcurrencyLimiter
+from inference_service.limiters.limiter_rpm import RpmGate, RpmLimiter
+from inference_service.utils.models import HealthResponse, InferRequest, InferResponse
+from inference_service.utils.prompt import build_prompt
 
 
 def create_app(
@@ -17,6 +19,10 @@ def create_app(
     max_concurrency: int,
     ollama_base_url: str,
     ollama_timeout_sec: float,
+    expose_limit_reasons: bool = True,
+    ollama_client_override: AIGenerator | None = None,
+    rpm_limiter_override: RpmGate | None = None,
+    concurrency_limiter_override: ConcurrencyGate | None = None,
 ) -> FastAPI:
     app = FastAPI(
         title="Rate-limited Inference Service",
@@ -24,22 +30,23 @@ def create_app(
         version="0.1.0",
     )
 
-    ollama_client = OllamaClient(
+    ollama_client: AIGenerator = ollama_client_override or OllamaClient(
         base_url=ollama_base_url,
         model=model,
         timeout_sec=ollama_timeout_sec,
     )
 
-    rpm_limiter = RpmLimiter(rpm=rpm)
-    concurrency_limiter = ConcurrencyLimiter(max_concurrency=max_concurrency)
+    rpm_limiter: RpmGate = rpm_limiter_override or RpmLimiter(rpm=rpm)
+
+    concurrency_limiter: ConcurrencyGate = concurrency_limiter_override or ConcurrencyLimiter(
+        max_concurrency=max_concurrency
+    )
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
         return HealthResponse(
             status="ok",
             model=model,
-            rpm_limit=rpm,
-            max_concurrency=max_concurrency,
         )
 
     @app.post("/infer", response_model=InferResponse)
@@ -47,10 +54,12 @@ def create_app(
         concurrency_allowed = await concurrency_limiter.try_acquire()
 
         if not concurrency_allowed:
+            # Default retry after 1 second for concurrency limit
+            # The retry on server should add a jitter there.
             raise HTTPException(
                 status_code=429,
                 headers={"Retry-After": "1"},
-                detail={"error": "concurrency_limited"},
+                detail=rate_limit_detail("concurrency_limited", expose_limit_reasons),
             )
 
         try:
@@ -60,7 +69,7 @@ def create_app(
                 raise HTTPException(
                     status_code=429,
                     headers={"Retry-After": str(retry_after)},
-                    detail={"error": "rpm_limited"},
+                    detail=rate_limit_detail("rpm_limited", expose_limit_reasons),
                 )
 
             prompt = build_prompt(payload.question)
@@ -100,6 +109,7 @@ def run_server(
     max_concurrency: int = 4,
     ollama_base_url: str = "http://localhost:11434",
     ollama_timeout_sec: float = 120.0,
+    expose_limit_reasons: bool = True,
 ) -> None:
     app = create_app(
         model=model,
@@ -107,9 +117,19 @@ def run_server(
         max_concurrency=max_concurrency,
         ollama_base_url=ollama_base_url,
         ollama_timeout_sec=ollama_timeout_sec,
+        expose_limit_reasons=expose_limit_reasons,
     )
 
+    # The service intentionally runs as a single Uvicorn worker because
+    # rate-limit state is stored in process memory.
     uvicorn.run(app, host=host, port=port)
+
+
+def rate_limit_detail(error: str, expose_limit_reasons: bool) -> dict[str, str] | str:
+    if expose_limit_reasons:
+        return {"error": error}
+
+    return "rate_limited"
 
 
 def app_cli() -> None:

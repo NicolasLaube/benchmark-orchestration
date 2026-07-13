@@ -1,26 +1,17 @@
+"""
+This module contains the InferenceClient class, which is responsible for sending inference requests
+to the inference service and handling the responses.
+"""
+
 import httpx
 
-from orchestrator.models import InferenceResult
-
-
-class InferenceClientError(Exception):
-    """Base error raised when the orchestrator cannot get a valid inference response."""
-
-
-class InferenceRateLimitedError(InferenceClientError):
-    """Raised when the inference service returns HTTP 429."""
-
-    def __init__(self, retry_after_sec: int, message: str) -> None:
-        super().__init__(message)
-        self.retry_after_sec = retry_after_sec
-
-
-class InferenceHttpError(InferenceClientError):
-    """Raised when the inference service returns a non-2xx HTTP response."""
-
-
-class InferenceNetworkError(InferenceClientError):
-    """Raised when the inference service cannot be reached or times out."""
+from orchestrator.inference_client.inference_errors import (
+    InferenceClientError,
+    InferenceHttpError,
+    InferenceNetworkError,
+    InferenceRateLimitedError,
+)
+from orchestrator.inference_client.inference_models import InferenceResult
 
 
 class InferenceClient:
@@ -34,15 +25,41 @@ class InferenceClient:
         self._client: httpx.AsyncClient | None = None
 
     async def __aenter__(self) -> "InferenceClient":
+        """
+        Enter the asynchronous context manager.
+
+        Returns:
+            InferenceClient: The instance of the InferenceClient.
+        """
         self._client = httpx.AsyncClient(timeout=self.timeout_sec)
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
+        """
+        Exit the asynchronous context manager.
+
+        Args:
+            exc_type: The exception type.
+            exc: The exception instance.
+            tb: The traceback.
+        """
         if self._client is not None:
             await self._client.aclose()
             self._client = None
 
     async def infer(self, question: str) -> InferenceResult:
+        """
+        Main method to send an inference request to the inference service.
+
+        Args:
+            question (str): The question to be sent for inference.
+
+        Returns:
+            InferenceResult: The result of the inference, including the answer, model, and latency.
+
+        Raises:
+            InferenceClientError: If the inference request fails or the response is malformed.
+        """
         if self._client is None:
             raise RuntimeError("InferenceClient must be used as an async context manager")
 
@@ -63,12 +80,21 @@ class InferenceClient:
             ) from exc
 
         if response.status_code == 429:
+            # The inference service is supposed to have a Retry-After header in the response
+            #  when it returns HTTP 429.
             retry_after_raw = response.headers.get("Retry-After", "1")
 
             try:
-                retry_after_sec = max(1, int(float(retry_after_raw)))
+                response_json = response.json()
             except ValueError:
-                retry_after_sec = 1
+                response_json = {}
+
+            # As explained in Readme, the inference service may return a JSON body with a "detail"
+            # field that contains a reason for the rate limit. This is optional, so we parse
+            #  it if present.
+            reason = _parse_rate_limit_reason(response_json)
+
+            retry_after_sec = _parse_retry_after(retry_after_raw)
 
             raise InferenceRateLimitedError(
                 retry_after_sec=retry_after_sec,
@@ -76,6 +102,7 @@ class InferenceClient:
                     "Inference service rate-limited the request "
                     f"with Retry-After={retry_after_sec}s"
                 ),
+                reason=reason,
             )
 
         try:
@@ -97,3 +124,26 @@ class InferenceClient:
             raise InferenceClientError(
                 f"Malformed inference response, missing field: {exc}"
             ) from exc
+
+
+def _parse_retry_after(value: str | None) -> int:
+    if value is None:
+        return 1
+
+    try:
+        return max(1, int(float(value)))
+    except ValueError:
+        return 1
+
+
+def _parse_rate_limit_reason(response_json: dict) -> str | None:
+    detail = response_json.get("detail")
+
+    if isinstance(detail, dict):
+        error = detail.get("error") or detail.get("reason")
+        return str(error) if error is not None else None
+
+    if isinstance(detail, str):
+        return detail
+
+    return None

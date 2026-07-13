@@ -1,13 +1,32 @@
+"""
+This module provides a loader for reading benchmark questions from a CSV file.
+"""
+
 import csv
 from pathlib import Path
 
-from orchestrator.models import BenchmarkJob, BenchmarkQuestion
+from orchestrator.loaders.loader_models import BenchmarkJob, BenchmarkQuestion
 
 
 class LoaderCsvBenchmark:
+    """Loader for reading benchmark questions from a CSV file."""
+
     REQUIRED_COLUMNS = {"id", "question", "expected_answer"}
 
     def load(self, job: BenchmarkJob) -> list[BenchmarkQuestion]:
+        """
+        Load benchmark questions from a CSV file associated with the given BenchmarkJob.
+
+        Args:
+            job (BenchmarkJob): The benchmark job containing the path to the CSV file.
+
+        Returns:
+            list[BenchmarkQuestion]: A list of benchmark questions.
+
+        Raises:
+            FileNotFoundError: If the CSV file does not exist.
+            ValueError: If the CSV file is empty, invalid, or missing required columns.
+        """
         csv_path = Path("data", job.path)
 
         if not csv_path.exists():
@@ -35,19 +54,17 @@ class LoaderCsvBenchmark:
 
                 if not question_id:
                     raise ValueError(
-                        f"Missing id in benchmarkJobBenchmarkJob CSV {csv_path} at row {row_number}"
+                        f"Missing id in BenchmarkJob CSV {csv_path} at row {row_number}"
                     )
 
                 if not question:
                     raise ValueError(
-                        f"Missing question in benchmarkJobBenchmarkJob CSV {csv_path} at row"
-                        + f" {row_number}"
+                        f"Missing question in BenchmarkJob CSV {csv_path} at row {row_number}"
                     )
 
                 if not expected_answer:
                     raise ValueError(
-                        f"Missing expected_answer in benchmarkJobBenchmarkJob CSV {csv_path} at row"
-                        + f" {row_number}"
+                        f"Missing expected_answer in BenchmarkJob CSV {csv_path} at row {row_number}"
                     )
 
                 questions.append(

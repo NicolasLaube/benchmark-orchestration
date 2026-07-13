@@ -69,6 +69,19 @@ Ajouter un peu de concurrency, des retries et de l'async
 V3: Adaptive orchestrator
 - détection de capacité
 - Dashboard rich
+- Ajouter le temps total d'execution du batch
+- Ajouter les commandes pour lancer les différentes stratégies de scheduler
+- Créer un tableau comparatif des temps avec les différents schedulers
+- Ajouter des métriques : 
+    - temps total
+    - temps utile
+    - temps à attendre
+- Mettre un health check 
+- Lancer le projet en une seule commande
+- découpler les schedulers
+
+
+
 
 Calculer les temps de lancement pour constater une amélioration des scores en fonction des versions. 
 
