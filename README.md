@@ -257,16 +257,6 @@ Properties:
 - amortized `O(1)` admission work;
 - monotonic time, so wall-clock adjustments cannot affect admission decisions.
 
-#### Burst behavior
-
-A pure sliding window enforces the hard RPM limit but does not smooth traffic. An empty window may admit many requests at once and then reject subsequent requests until capacity returns.
-
-An optional token-bucket pacing layer can smooth admissions while preserving the exact rolling-window check:
-
-- the sliding window enforces the hard limit;
-- the token bucket controls burstiness.
-
-The service still never sleeps while admitting requests. If capacity is unavailable, it rejects immediately.
 
 ### Concurrency limiter
 
@@ -288,6 +278,14 @@ A semaphore is intentionally not used for waiting, because waiting would create 
 Rate-limit and concurrency state are stored in memory, so the service intentionally runs with a single Uvicorn worker.
 
 A multi-instance production deployment would require coordinated admission control, for example through a shared Redis-backed limiter or an API gateway. That was left outside the take-home scope.
+
+
+### Multi-client behavior
+
+Rate limits are enforced globally by the inference service. If multiple orchestrators run against the same service, they therefore share the same RPM and concurrency budget.
+
+The current adaptive controller only observes its own traffic, so external load can cause it to underestimate the available capacity. The service protects its global capacity, but does not guarantee fair sharing between clients.
+
 
 ---
 
@@ -619,18 +617,38 @@ Current tradeoffs:
 
 ---
 
+## Implementation choices
+
+* **Explicit backpressure:** the inference service does not queue requests internally. Capacity violations are surfaced explicitly through `429` and `503` responses, allowing the orchestrator to adapt.
+* **Separate rate and concurrency control:** launch rate and in-flight concurrency are adjusted independently because RPM saturation and concurrency saturation are different bottlenecks.
+* **Jittered retries:** retry delays include jitter to avoid multiple failed requests retrying at the same instant and creating another synchronized burst.
+* **Monotonic timing:** rate limiting and latency measurements rely on monotonic time so they are not affected by system clock adjustments.
+* **Sliding-window RPM limiting:** I chose a sliding-window limiter because the requirement is expressed as a strict number of accepted requests over a rolling 60-second period. It directly enforces that constraint without introducing an internal queue or traffic-smoothing behavior.
+
+
+## Observed behavior
+
+* The active bottleneck depends on the configured RPM limit, maximum concurrency, and request latency.
+* Increasing concurrency improves throughput only until another capacity limit is reached. Beyond that point, additional concurrency mainly increases contention and retries.
+* The adaptive controller converges close to the available capacity while keeping a small safety margin below hard limits.
+* Multiple orchestrators share the same global service capacity, but the current implementation does not guarantee fair capacity allocation between clients.
+
+---
+
 ## What I would build next
 
 With more time, I would add:
 
-- checkpointing and resume for long benchmark runs;
-- priority queues for mixed workloads;
-- richer benchmark job types;
-- Prometheus metrics and structured JSON logs;
-- distributed workers with shared state;
-- more advanced adaptive control for opaque `429` signals;
-- reproducible load-test scenarios;
-- optional Docker Compose support.
+* checkpointing and resume for long benchmark runs;
+* priority queues for mixed workloads;
+* richer benchmark job types;
+* Prometheus metrics and structured JSON logs;
+* distributed workers with shared state;
+* more advanced adaptive control for opaque `429` signals and external competing traffic;
+* evaluation against dynamically changing capacity limits to test how well the controller tracks varying RPM and concurrency constraints;
+* client-aware rate limiting or shared coordination for fairer capacity allocation across multiple orchestrators;
+* reproducible load-test scenarios;
+* optional Docker Compose support.
 
 ---
 
@@ -639,3 +657,4 @@ With more time, I would add:
 AI tooling was used to accelerate boilerplate generation, review edge cases, compare alternative rate-control strategies, and improve documentation.
 
 The system design, tradeoff decisions, controller behavior, load-testing results, and final implementation were manually reviewed and tested end to end.
+
