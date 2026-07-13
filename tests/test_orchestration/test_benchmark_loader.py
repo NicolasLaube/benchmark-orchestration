@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from orchestrator.loaders.loader_benchmark import LoaderCsvBenchmark
-from orchestrator.report.report_models import BenchmarkJob
+from orchestrator.loaders.loader_models import BenchmarkJob
 
 
 def test_benchmark_loader_reads_csv(tmp_path: Path) -> None:
