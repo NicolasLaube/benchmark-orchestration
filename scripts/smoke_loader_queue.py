@@ -1,6 +1,6 @@
-from orchestrator.loaders.loader_queue import JsonlQueueLoader
+from orchestrator.loaders.loader_queue import LoaderJsonlQueue
 
-loader = JsonlQueueLoader()
+loader = LoaderJsonlQueue()
 jobs = loader.load("data/queue.jsonl")
 
 for job in jobs:

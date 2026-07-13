@@ -1,7 +1,9 @@
 import httpx
 
+from inference_service.ai_generator.ai_generator import AIGenerator
 
-class OllamaClient:
+
+class OllamaClient(AIGenerator):
     def __init__(
         self,
         base_url: str,

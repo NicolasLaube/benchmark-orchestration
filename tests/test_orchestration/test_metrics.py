@@ -1,7 +1,7 @@
 # tests/test_metrics.py
 
-from orchestrator.metrics import MetricsCollector
-from orchestrator.models import QuestionResult
+from orchestrator.report.report_metrics_collector import MetricsCollector
+from orchestrator.report.report_models import QuestionResult
 
 
 def test_metrics_collector_summarizes_results() -> None:
