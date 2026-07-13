@@ -25,6 +25,9 @@ In a controlled local benchmark of 1,000 requests against the same 60 RPM endpoi
 
 The adaptive scheduler therefore maintained near-identical throughput while reducing rate-limit responses and retries by approximately **98%**, and completed the full workload without final failures.
 
+Both runs used the same workload, model, machine, and service limits:
+60 RPM and a maximum in-flight concurrency of 4.
+
 
 ---
 
@@ -36,21 +39,19 @@ The adaptive scheduler therefore maintained near-identical throughput while redu
 uv sync
 ```
 
-### 2. Pull the Ollama model
-
-```bash
-ollama pull qwen2.5:0.5b
-```
-
-### 3. Start the inference service
+### 2. Start the inference service
 
 ```bash
 make serve
 ```
 
+`make serve` starts Ollama if necessary and pulls the configured model if it is not already available. 
+
 Equivalent command:
 
 ```bash
+ollama serve
+
 uv run inference-service \
   --model qwen2.5:0.5b \
   --rpm 60 \
@@ -58,7 +59,7 @@ uv run inference-service \
   --port 8000
 ```
 
-### 4. Run the benchmark orchestrator
+### 3. Run the benchmark orchestrator
 
 In another terminal:
 
@@ -69,10 +70,17 @@ make benchmark
 Equivalent command:
 
 ```bash
-uv run benchmark-orchestrator \
-  --queue data/queue.jsonl \
-  --endpoint http://localhost:8000/infer \
-  --out results/run.json
+uv run orchestrator \
+		--queue "$(QUEUE)" \
+		--endpoint "$(INFERENCE_ENDPOINT)" \
+		--out "$(OUT)" \
+		--timeout-sec "$(TIMEOUT_SEC)" \
+		--max-retries "$(MAX_RETRIES)" \
+		--scheduler "$(SCHEDULER)" \
+		--max-concurrency "$(MAX_CONCURRENCY)" \
+		--max-target-concurrency "$(MAX_TARGET_CONCURRENCY)" \
+		--log-level "$(LOG_LEVEL)" \
+		$(ORCHESTRATOR_ARGS)
 ```
 
 The repository includes a sample `benchmark.csv` and `queue.jsonl`.
@@ -362,50 +370,66 @@ When reasons are hidden, the same `429 + Retry-After` contract still works, but 
 
 ```mermaid
 flowchart TD
-    A[Start conservatively]
-    B[Send requests]
+    A[Start conservatively<br/>low concurrency + paced launches]
+    B[Launch request]
     C{Response}
+
     D[Success]
-    E[429 RPM]
-    F[429 concurrency]
-    G[Opaque 429]
-    H[Increase usable pressure]
-    I[Estimate RPM ceiling<br/>adjust launch interval]
-    J[Estimate concurrency ceiling<br/>reduce target concurrency]
-    K[Reduce both dimensions conservatively]
-    L[Retry after backpressure]
+    E{Control phase}
+    F[Probe phase<br/>decrease launch interval]
+    G[Adaptive phase<br/>increase concurrency gradually<br/>when allowed]
+
+    H{Rate-limit signal}
+    I[Structured RPM limit]
+    J[Structured concurrency limit]
+    K[Opaque / unknown limit]
+
+    L[Estimate RPM ceiling<br/>slow launch pacing]
+    M[Estimate concurrency ceiling<br/>reduce target concurrency]
+    N[Conservative backoff<br/>reduce concurrency and launch rate]
+
+    O[Respect Retry-After<br/>schedule retry]
+    P{Work remaining?}
+    Q[Finish]
 
     A --> B
     B --> C
+
     C -->|200| D
-    C -->|RPM reason| E
-    C -->|Concurrency reason| F
-    C -->|Unknown reason| G
+    C -->|429| H
 
-    D --> H
-    H --> B
+    D --> E
+    E -->|Initial probing| F
+    E -->|Adaptive control| G
 
-    E --> I
+    F --> P
+    G --> P
+
+    H -->|rpm_limited| I
+    H -->|concurrency_limited| J
+    H -->|reason unavailable| K
+
     I --> L
+    J --> M
+    K --> N
 
-    F --> J
-    J --> L
+    L --> O
+    M --> O
+    N --> O
 
-    G --> K
-    K --> L
+    O --> P
 
-    L --> B
+    P -->|Yes| B
+    P -->|No| Q
 ```
 
-The controller follows an AIMD-inspired strategy:
+The scheduler controls two independent dimensions:
 
-- increase pressure gradually while requests succeed;
-- reduce pressure after explicit backpressure;
-- use `Retry-After` as the authoritative retry delay;
-- requeue rate-limited work instead of counting it as a final failure;
-- stop only when the retry budget is exhausted.
+* **launch pacing** — how quickly new HTTP requests are started;
+* **target concurrency** — the maximum number of request attempts allowed to be active.
 
-The configured service limits are assumed to remain stable during one benchmark run.
+During the initial probe phase, successful requests progressively reduce the launch interval. Once adaptive control begins, sustained success can increase target concurrency. Explicit RPM and concurrency signals update the corresponding estimated capacity ceiling, while opaque rate-limit responses trigger a conservative backoff across both dimensions.
+
 
 ---
 
@@ -518,19 +542,52 @@ Example:
 
 ```json
 {
-  "total_wall_time_sec": 520.0,
-  "total_requests": 1000,
-  "successful_requests": 1000,
-  "failure_count": 0,
-  "retry_count": 3,
-  "http_429_count": 3,
-  "throughput_req_s": 1.92,
-  "latency_ms": {
-    "p50": 440,
-    "p95": 4119
+  "generated_at": "2026-07-13T14:07:09.890829+00:00",
+  "summary": {
+    "total_wall_time_sec": 997.308,
+    "total_requests": 1000,
+    "successful_requests": 999,
+    "failure_count": 1,
+    "accuracy": 0.5816,
+    "latency_ms": {
+      "p50": 422,
+      "p95": 2122.0,
+      "min": 188,
+      "max": 4762
+    },
+    "throughput_req_s": 1.003,
+    "benchmarks": [
+      {
+        "benchmark_id": "run_001",
+        "total_requests": 100,
+        "successful_requests": 100,
+        "failure_count": 0,
+        "accuracy": 0.58,
+        "latency_ms": {
+          "p50": 372.5,
+          "p95": 2097.0
+        }
+      }
+    ]
   },
-  "accuracy": 0.598
+  "results": [
+    {
+      "benchmark_id": "run_001",
+      "question_id": "7",
+      "question": "Days in a week?",
+      "expected_answer": "7",
+      "answer": "14",
+      "correct": false,
+      "score": 0.0,
+      "latency_ms": 326,
+      "attempts": 1,
+      "status": "success",
+      "error": null
+    },
+  ],
 }
+
+
 ```
 
 ---
