@@ -1,8 +1,8 @@
-from orchestrator.loaders.loader_benchmark import CsvBenchmarkLoader
-from orchestrator.loaders.loader_queue import JsonlQueueLoader
+from orchestrator.loaders.loader_benchmark import LoaderCsvBenchmark
+from orchestrator.loaders.loader_queue import LoaderJsonlQueue
 
-loaderQueue = JsonlQueueLoader()
-loaderBenchmark = CsvBenchmarkLoader()
+loaderQueue = LoaderJsonlQueue()
+loaderBenchmark = LoaderCsvBenchmark()
 jobs = loaderQueue.load("data/queue.jsonl")
 
 oneJob = jobs[0]

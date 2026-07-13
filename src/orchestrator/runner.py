@@ -1,9 +1,10 @@
 import logging
 
 from orchestrator.loaders.loader_benchmark import LoaderCsvBenchmark
+from orchestrator.loaders.loader_models import BenchmarkQuestion
 from orchestrator.loaders.loader_queue import LoaderJsonlQueue
-from orchestrator.models import BenchmarkQuestion, QuestionResult
-from orchestrator.schedulers.scheduler import Scheduler
+from orchestrator.report.report_models import QuestionResult
+from orchestrator.schedulers.scheduler_base import Scheduler
 
 logger = logging.getLogger(__name__)
 

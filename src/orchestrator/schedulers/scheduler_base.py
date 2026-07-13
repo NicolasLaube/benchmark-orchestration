@@ -1,6 +1,7 @@
 from typing import Protocol
 
-from orchestrator.models import BenchmarkQuestion, QuestionResult
+from orchestrator.report.report_models import QuestionResult
+from orchestrator.loaders.loader_benchmark import BenchmarkQuestion
 
 
 class Scheduler(Protocol):

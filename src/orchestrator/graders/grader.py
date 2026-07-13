@@ -1,14 +1,24 @@
-# The grader is responsible for running the grading logic.
-# For example, for "What is the capital of France?", the grader will check if the answer is "Paris".
-# if the answer is correct, the grader will return a score of 1. If the answer is incorrect, the
-# grader will return a score of 0.
+"""
+The FGrader module provides a simple grading mechanism for evaluating the correctness of answers
+based on substring matching. It checks if the expected answer is present as a substring in the
+actual answer provided. The grading is case-insensitive and ignores leading and trailing whitespace.
+"""
 
-
-from orchestrator.models import GradeResult
+from orchestrator.graders.grader_models import GradeResult
 
 
 class SubstringGrader:
     def grade(self, answer: str, expected_answer: str) -> GradeResult:
+        """
+        Grades the given answer against the expected answer using substring matching.
+
+        Args:
+            answer (str): The answer to be graded.
+            expected_answer (str): The expected answer.
+
+        Returns:
+            GradeResult: The result of the grading, including correctness and score.
+        """
         correct = expected_answer.strip().lower() in answer.strip().lower()
 
         return GradeResult(

@@ -1,11 +1,30 @@
+"""
+This module provides a loader for reading benchmark jobs from a JSON Lines (JSONL) file.
+"""
+
 import json
 from pathlib import Path
 
-from orchestrator.models import BenchmarkJob
+from orchestrator.loaders.loader_models import BenchmarkJob
 
 
 class LoaderJsonlQueue:
+    """Loader for reading benchmark jobs from a JSON Lines (JSONL) file."""
+
     def load(self, path: str) -> list[BenchmarkJob]:
+        """
+        Load benchmark jobs from a JSON Lines (JSONL) file.
+
+        Args:
+            path (str): The path to the JSONL file containing benchmark jobs.
+
+        Returns:
+            list[BenchmarkJob]: A list of benchmark jobs.
+
+        Raises:
+            FileNotFoundError: If the JSONL file does not exist.
+            ValueError: If the JSONL file contains invalid JSON or is missing required fields.
+        """
         queue_path = Path(path)
 
         if not queue_path.exists():

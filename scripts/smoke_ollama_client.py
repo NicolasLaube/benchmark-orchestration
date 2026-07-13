@@ -1,6 +1,6 @@
 import asyncio
 
-from inference_service.pipeline.ollama_client import OllamaClient
+from inference_service.ai_generator.ollama_client import OllamaClient
 
 
 async def main() -> None:

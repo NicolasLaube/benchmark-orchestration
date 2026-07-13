@@ -1,6 +1,9 @@
 from orchestrator.graders.grader import SubstringGrader
-from orchestrator.inference_client import InferenceClient, InferenceClientError
-from orchestrator.models import BenchmarkQuestion, QuestionResult
+from orchestrator.inference_client.inference_client import (
+    InferenceClient,
+    InferenceClientError,
+)
+from orchestrator.report.report_models import BenchmarkQuestion, QuestionResult
 
 
 class SequentialScheduler:
