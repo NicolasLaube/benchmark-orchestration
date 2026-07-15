@@ -1,3 +1,8 @@
+"""
+The orchestrator.
+No logic.
+"""
+
 import asyncio
 import logging
 import time

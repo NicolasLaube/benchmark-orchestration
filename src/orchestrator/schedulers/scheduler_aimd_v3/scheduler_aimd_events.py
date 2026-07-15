@@ -59,6 +59,8 @@ def emit_control_update(
     controller: AdaptiveAimdController,
     update: ControlUpdate | None,
 ) -> None:
+    """Emits a control update event to the runtime, capturing the state of the scheduler before and
+    after the update. If no update is provided, no event is emitted."""
     if update is None:
         return
 
