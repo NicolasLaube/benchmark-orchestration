@@ -4,6 +4,7 @@ which is a state machine that adjusts the target concurrency and launch interval
 outcomes of attempts. The controller operates in different phases, including an initial "opaque RPM
 probe" phase and a subsequent "adaptive" phase, where it responds to successes and failures to
 optimize throughput while avoiding rate limits.
+
 """
 
 import enum
@@ -32,7 +33,9 @@ class AIMDPhase(enum.Enum):
 
 
 class AdaptiveAimdController:
-    """Pure state machine for AIMD decisions."""
+    """The controller decides how to adjust the target concurrency and launch interval based on
+    observed outcomes. It maintains the state of the scheduler, including the current phase,
+    target concurrency, and launch interval."""
 
     def __init__(self, config: AdaptiveAimdConfig) -> None:
         self.config = config
@@ -77,9 +80,19 @@ class AdaptiveAimdController:
         self,
         outcome: AttemptOutcome,
     ) -> tuple[RateLimitKind, str | None]:
+        """Classifies the type of rate limit encountered based on the outcome of an attempt.
+
+        Args:
+            outcome (AttemptOutcome): The outcome of the attempt that triggered the rate limit.
+            Returns:
+            tuple[RateLimitKind, str | None]: A tuple containing the classified rate limit kind and
+            an optional reason for structured 429 responses.
+        """
         kind = classify_rate_limit_reason(outcome.rate_limit_reason)
 
         if kind != RateLimitKind.GENERIC:
+            # Easy case: If the rate limit reason can be classified as either RPM or concurrency,
+            # return the classification along with any structured 429 reason.
             reason = (outcome.rate_limit_reason or "").lower()
 
             return (
@@ -87,8 +100,17 @@ class AdaptiveAimdController:
                 self._mark_structured_429(reason),
             )
 
-        # AIMD-specific heuristics
+        # If the rate limit reason is generic, we need to infer the type of limit based on observed
+        # metrics. If the number of in-flight requests is 1 or less, it indicates that the rate
+        # limit is likely due to the RPM limit rather than concurrency.
+        # If the observed launch RPM is close to the estimated RPM limit, we classify it as an RPM
+        # limit. Otherwise, we classify it as a generic overload.
+
         if outcome.observed_in_flight <= 1:
+            # If the number of in-flight requests is 1 or less, it indicates that the rate limit is
+            # likely due to the RPM limit rather than concurrency. This is because a concurrency
+            # limit would typically allow multiple in-flight requests, while an RPM limit would
+            # restrict the rate of requests regardless of concurrency.
             return RateLimitKind.RPM, None
 
         if self.estimated_rpm_limit is not None and outcome.observed_launch_rpm >= int(
@@ -110,6 +132,8 @@ class AdaptiveAimdController:
         update = self._snapshot("rpm_limit")
 
         if outcome.observed_launch_rpm > 0:
+            # Update the estimated RPM limit based on the observed launch RPM, ensuring that it
+            # does not increase if a lower limit has already been observed.
             candidate = max(1, outcome.observed_launch_rpm - 1)
             self.estimated_rpm_limit = (
                 candidate
@@ -118,14 +142,26 @@ class AdaptiveAimdController:
             )
 
         if self.estimated_rpm_limit is not None:
+            # Calculate the target RPM based on the estimated RPM limit and the configured capacity
+            #  target ratio.
             target_rpm = max(
                 1.0,
                 self.estimated_rpm_limit * self.config.rpm_capacity_target_ratio,
             )
             learned_interval = 60.0 / target_rpm
         else:
-            learned_interval = self.launch_interval_sec * 1.25 + 0.05
+            # If the estimated RPM limit is not available, we use a backoff strategy to increase the
+            # launch interval. This helps to prevent overwhelming the server with rapid retries and
+            # allows for a more controlled recovery from failures or rate limits.
+            learned_interval = (
+                self.launch_interval_sec * self.config.launch_interval_backoff_factor
+                + self.config.launch_interval_backoff_sec
+            )
 
+        # Update the launch interval based on the learned interval, ensuring that it remains within
+        # the configured minimum and maximum bounds. This helps to prevent the launch interval
+        # from becoming too short or too long, which could lead to either overwhelming the server
+        # or underutilizing resources.
         self.launch_interval_sec = min(
             self.config.max_launch_interval_sec,
             max(self.config.min_launch_interval_sec, learned_interval),
@@ -134,6 +170,9 @@ class AdaptiveAimdController:
         self.probe_success_count = 0
 
         if self.phase == AIMDPhase.OPAQUE_RPM_PROBE:
+            # If the controller is in the "opaque RPM probe" phase, we transition to the "adaptive"
+            # phase after observing an RPM limit. This indicates that we have gathered enough
+            # information about the RPM limit and can now operate in the adaptive phase.
             self.phase = AIMDPhase.ADAPTIVE
             self.target_concurrency = min(
                 self.config.max_target_concurrency,
@@ -189,7 +228,8 @@ class AdaptiveAimdController:
         )
         self.launch_interval_sec = min(
             self.config.max_launch_interval_sec,
-            self.launch_interval_sec * 1.25 + 0.05,
+            self.launch_interval_sec * self.config.launch_interval_backoff_factor
+            + self.config.launch_interval_backoff_sec,
         )
         self.success_since_last_limit = 0
         self.probe_success_count = 0
@@ -224,7 +264,18 @@ class AdaptiveAimdController:
                 self.launch_interval_sec * self.config.probe_speedup_factor,
             )
 
+            # Whave two possible exits from OPAQUE_RPM_PROBE
+            # 1. We hit an RPM limit
+            #    → estimated_rpm_limit learned
+            #    → ADAPTIVE
+
+            # 2. We observe enough successes without finding a limit
+            #    → estimated_rpm_limit still None
+            #    → ADAPTIVE
+            # Because, else we would keep probing launch RPM but never really start additive
+            # concurrency growth.
             if self.probe_success_count >= self.config.successes_before_rpm_probe:
+                # Transition to the adaptive phase and adjust the target concurrency accordingly.
                 self.phase = AIMDPhase.ADAPTIVE
                 self.target_concurrency = min(
                     self.config.max_target_concurrency,
@@ -245,6 +296,9 @@ class AdaptiveAimdController:
             else self.config.max_target_concurrency
         )
 
+        # Additive Increase: If the number of consecutive successful attempts since the last limit
+        # has reached the configured threshold, increment the target concurrency by 1, up to the
+        # estimated concurrency limit or the maximum target concurrency.
         if self.target_concurrency < concurrency_ceiling:
             self.target_concurrency += 1
 
@@ -266,7 +320,8 @@ class AdaptiveAimdController:
 
     def _mark_structured_429(self, reason: str) -> str | None:
         """
-        Handle the detection of a structured 429 response, adjusting the controller's state accordingly.
+        Handle the detection of a structured 429 response, adjusting the controller's state
+        accordingly.
 
         Returns:
             str | None: The reason for the structured 429, or None if it has already been seen.

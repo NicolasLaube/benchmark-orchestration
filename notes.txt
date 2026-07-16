@@ -6,7 +6,7 @@ Ce que j'ai compris:
 
 Hypothèses: 
 - Il est préférable de monter la charge progressivement plutôt que de bombarder le service. 
-
+- Aucune considération de fairness est à prendre (si deux benchmarks tournent en //, on se moque de l'égalité)
 
 
 Prérequis fonctionnel:

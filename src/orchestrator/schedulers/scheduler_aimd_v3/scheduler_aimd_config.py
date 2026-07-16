@@ -61,6 +61,13 @@ class AdaptiveAimdConfig:
     # Setting this to 10 reproduces the spirit of the previous logging mode.
     progress_log_every: int | None = None
 
+    # The factor by which the launch interval is increased after a failed request or rate limit
+    launch_interval_backoff_factor: float = 1.25
+    # The minimum amount of time in seconds to wait before retrying a failed request or after
+    # encountering a rate limit. This helps to prevent overwhelming the server with rapid retries
+    # and allows for a more controlled recovery from failures or rate limits.
+    launch_interval_backoff_sec: float = 0.05
+
     def __post_init__(self) -> None:
         if self.initial_concurrency <= 0:
             raise ValueError("initial_concurrency must be greater than 0")

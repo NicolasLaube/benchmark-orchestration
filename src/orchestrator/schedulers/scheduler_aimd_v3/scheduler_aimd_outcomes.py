@@ -27,7 +27,11 @@ async def handle_outcome(
     results: list[QuestionResult],
     log_progress: Callable[[], None],
 ) -> None:
+    """Handles the outcome of a benchmark question attempt, updating metrics, scheduling retries,
+    and emitting control updates as necessary."""
     if outcome.result is not None:
+        # Record the successful completion of the question attempt, update metrics,
+        # and emit a control update.
         results.append(outcome.result)
         await runtime.record_completion(outcome.result)
         emit_control_update(
@@ -39,6 +43,9 @@ async def handle_outcome(
         return
 
     if outcome.error_type == "rate_limited":
+        # Handle rate limiting by classifying the type of rate limit, updating metrics, and emitting
+        # control updates. If the maximum number of retries has not been reached, schedule a retry
+        # for the question attempt.
         await handle_rate_limit(
             runtime,
             controller,
@@ -46,6 +53,7 @@ async def handle_outcome(
         )
 
     if outcome.attempt <= config.max_retries:
+        # Schedule a retry for the question attempt, respecting the maximum backoff time.
         delay = runtime.compute_retry_delay(
             outcome,
             max_backoff_sec=config.max_backoff_sec,
