@@ -5,7 +5,7 @@ from enum import StrEnum
 import typer
 from rich.console import Console
 
-from orchestrator.graders.grader import SubstringGrader
+from orchestrator.grader.grader import SubstringGrader
 from orchestrator.inference_client.inference_client import InferenceClient
 from orchestrator.loaders.loader_benchmark import LoaderCsvBenchmark
 from orchestrator.loaders.loader_queue import LoaderJsonlQueue

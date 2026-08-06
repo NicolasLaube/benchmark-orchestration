@@ -20,7 +20,7 @@ dependencies = [
 
 [project.scripts]
 orchestrator = "orchestrator.main:app_cli"
-inference-service = "inference_service.api:app_cli"
+inference-service = "inference_service.api.cli:app_cli"
 
 [build-system]
 requires = ["uv_build>=0.11.26,<0.12.0"]
@@ -45,3 +45,9 @@ ignore = []
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-q"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/inference_service",
+    "src/orchestrator",
+]

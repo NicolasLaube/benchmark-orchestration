@@ -8,7 +8,7 @@ import logging
 import time
 from collections import deque
 
-from orchestrator.graders.grader import SubstringGrader
+from orchestrator.grader.grader import SubstringGrader
 from orchestrator.inference_client.inference_client import InferenceClient
 from orchestrator.loaders.loader_benchmark import BenchmarkQuestion
 from orchestrator.report.report_models import QuestionResult

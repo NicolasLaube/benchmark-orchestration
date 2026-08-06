@@ -2,7 +2,7 @@ from inference_service.limiters.limiter_rpm import RpmLimiter
 
 
 class FakeClock:
-    def __init__(self) -> None:
+    def __init__(self):
         self.now = 0.0
 
     def __call__(self) -> float:
