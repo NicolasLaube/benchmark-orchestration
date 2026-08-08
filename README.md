@@ -658,3 +658,111 @@ AI tooling was used to accelerate boilerplate generation, review edge cases, com
 
 The system design, tradeoff decisions, controller behavior, load-testing results, and final implementation were manually reviewed and tested end to end.
 
+
+## Running with Docker Compose
+
+The project can be run locally using Docker Compose. The stack contains:
+
+* **Ollama** — serves the language model.
+* **Ollama init** — ensures the requested model is downloaded before the inference service starts.
+* **Inference service** — exposes the model through the benchmark API.
+* **Orchestrator** — loads a benchmark queue and sends requests to the inference service.
+
+### Start the stack
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+Docker Compose will start the services in dependency order:
+
+```text
+Ollama
+  ↓ healthy
+Ollama init
+  ↓ model downloaded
+Inference service
+  ↓ healthy
+Orchestrator
+```
+
+The default model is:
+
+```text
+qwen2.5:0.5b
+```
+
+A different Ollama model can be selected using the `MODEL_NAME` environment variable:
+
+```bash
+MODEL_NAME=llama3.2 docker compose up --build
+```
+
+The downloaded model weights are persisted in the `ollama-data` Docker volume, so they do not need to be downloaded again every time the containers are recreated.
+
+### Run the orchestrator manually
+
+For benchmark runs, the orchestrator can be executed separately with:
+
+```bash
+docker compose run --rm orchestrator \
+  --queue data/queue.jsonl
+```
+
+The queue directory is mounted into the orchestrator container, so files placed in the local `data/` directory are available inside the container under `/app/data`.
+
+For example:
+
+```bash
+docker compose run --rm orchestrator \
+  --queue data/queue_test.jsonl
+```
+
+Additional orchestrator CLI options can be passed in the same way:
+
+```bash
+docker compose run --rm orchestrator \
+  --queue data/queue.jsonl \
+  --scheduler fixed \
+  --max-concurrency 4
+```
+
+To display all available options:
+
+```bash
+docker compose run --rm orchestrator --help
+```
+
+The orchestrator communicates with the inference service through Docker's internal network using:
+
+```text
+http://inference-service:8000
+```
+
+The inference service similarly communicates with Ollama through:
+
+```text
+http://ollama:11434
+```
+
+These internal ports do not need to be published to the host machine for communication between Docker Compose services.
+
+### Stop the stack
+
+Stop and remove the containers and Compose network with:
+
+```bash
+docker compose down
+```
+
+The `ollama-data` volume is preserved by default.
+
+To also delete the persisted Ollama model data:
+
+```bash
+docker compose down -v
+```
+
+Use the latter command with care, since the models will need to be downloaded again on the next startup.
