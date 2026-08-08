@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -9,11 +11,6 @@ class InferResponse(BaseModel):
     answer: str
     model: str
     latency_ms: int
-
-
-class HealthResponse(BaseModel):
-    status: str
-    model: str
 
 
 class ErrorResponse(BaseModel):

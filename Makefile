@@ -65,7 +65,6 @@ MAX_RETRIES ?= 3
 # Additional arguments can be passed from the command line:
 # make test PYTEST_ARGS="-x -s"
 # make benchmark ORCHESTRATOR_ARGS="--scheduler aimd"
-PYTEST_ARGS ?= -v
 ORCHESTRATOR_ARGS ?=
 
 # ---------------------------------------------------------------------------
@@ -114,7 +113,8 @@ pull-model:
 # ---------------------------------------------------------------------------
 
 serve: ensure-model
-	uv run inference-service \
+	uv run --package benchmark-inference-service \
+		python -m inference_service.api.cli
 		--model "$(MODEL)" \
 		--rpm "$(RPM)" \
 		--max-concurrency "$(CONCURRENCY_LIMIT)" \
@@ -152,7 +152,8 @@ smoke:
 # ---------------------------------------------------------------------------
 
 test:
-	uv run pytest $(PYTEST_ARGS) tests
+	uv run pytest -v
+
 
 lint:
 	uv run ruff check .

@@ -4,7 +4,7 @@ based on substring matching. It checks if the expected answer is present as a su
 actual answer provided. The grading is case-insensitive and ignores leading and trailing whitespace.
 """
 
-from orchestrator.graders.grader_models import GradeResult
+from orchestrator.grader.grader_models import GradeResult
 
 
 class SubstringGrader:

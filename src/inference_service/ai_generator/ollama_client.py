@@ -16,6 +16,7 @@ class OllamaClient(AIGenerator):
         self.client = httpx.AsyncClient(timeout=self.timeout_sec)
 
     async def generate(self, prompt: str) -> str:
+        """Generates the response from the prompt."""
         response = await self.client.post(
             f"{self.base_url}/api/generate",
             json={
@@ -28,3 +29,23 @@ class OllamaClient(AIGenerator):
         response.raise_for_status()
         data = response.json()
         return data.get("response", "")
+
+    async def close(self):
+        """Closes the client."""
+
+        await self.client.aclose()
+
+    async def health_check(self) -> bool:
+        """Health route for Ollama client.
+
+        Returns:
+            - bool: whether the model is available for the Ollama client.
+        """
+
+        response = await self.client.get(f"{self.base_url}/api/tags")
+
+        response.raise_for_status()
+
+        models = response.json().get("models", [])
+
+        return any(self.model == model.get("name") for model in models)

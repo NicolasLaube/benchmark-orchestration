@@ -1,0 +1,26 @@
+[project]
+name = "benchmark-orchestrator"
+version = "0.1.0"
+description = "Orchestrator with AIMD scheduler"
+authors = [
+    { name = "NicolasL" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "asyncio>=4.0.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "rich>=15.0.0",
+    "typer>=0.26.8",
+]
+
+[project.scripts]
+orchestrator = "orchestrator.cli:app_cli"
+
+[build-system]
+requires = ["uv_build>=0.11.26,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "orchestrator"

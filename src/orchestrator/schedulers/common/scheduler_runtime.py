@@ -12,7 +12,7 @@ from contextlib import nullcontext
 
 from rich.console import Console
 
-from orchestrator.graders.grader import SubstringGrader
+from orchestrator.grader.grader import SubstringGrader
 from orchestrator.inference_client.inference_client import (
     InferenceClient,
     InferenceClientError,
