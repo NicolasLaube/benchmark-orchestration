@@ -1,0 +1,73 @@
+services:
+  ollama:
+    image: ollama/ollama
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 2s
+      retries: 5
+      start_period: 5s
+
+  ollama-init:
+    image: ollama/ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    command: ["pull", "${MODEL_NAME:-qwen2.5:0.5b}"]
+  inference-service:
+    build:
+      context: ./services/inference_service
+    
+    depends_on:
+      ollama-init:
+        condition: service_completed_successfully
+
+    healthcheck:
+      test: [
+        "CMD",
+        "python",
+        "-c",
+        "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"
+      ]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      MODEL_NAME: ${MODEL_NAME:-qwen2.5:0.5b}
+      HOST: 0.0.0.0
+      PORT: 8000
+      OLLAMA_TIMEOUT_SEC: 120
+
+    command: 
+      - "--rpm"
+      - "60"
+      - "--max-concurrency"
+      - "4"
+
+  orchestrator:
+    build:
+      context: ./services/orchestrator
+    depends_on:
+      inference-service:
+        condition: service_healthy
+    environment:
+      INFERENCE_ENDPOINT: http://inference-service:8000/infer
+    
+    volumes:
+      - ./data:/app/data
+
+    command:
+      - "--queue"
+      - "data/queue.jsonl"
+  
+volumes:
+  ollama-data:
+
+

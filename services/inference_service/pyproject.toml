@@ -1,0 +1,27 @@
+[project]
+name = "benchmark-inference-service"
+version = "0.1.0"
+description = "Inference service with rate limiter and concurrency limiter."
+authors = [
+    { name = "NicolasL" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "asyncio>=4.0.0",
+    "fastapi>=0.139.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "typer>=0.26.8",
+    "uvicorn[standard]>=0.50.1",
+]
+
+[project.scripts]
+inference-service = "inference_service.api.cli:app_cli"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "inference_service"
