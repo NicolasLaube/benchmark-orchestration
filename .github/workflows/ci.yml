@@ -1,7 +1,7 @@
 name: CI
 
 on:
-  push
+  push:
 
 jobs:
   hello: 
@@ -9,4 +9,4 @@ jobs:
 
     steps:
       - name: hello
-      - run: echo "CI is running"
+        run: echo "CI is running"
