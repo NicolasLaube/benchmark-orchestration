@@ -2,11 +2,23 @@ name: CI
 
 on:
   push:
+  pull_request:
 
 jobs:
-  hello: 
+  test: 
     runs-on: ubuntu-latest
 
     steps:
-      - name: hello
-        run: echo "CI is running"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: austral-sh/setup-up@v9
+      
+      - name: Install dependencies
+        run: uv sunc --all-packages --dev
+
+      - name: Launch tests
+        run: uv run pytest
+
+      
