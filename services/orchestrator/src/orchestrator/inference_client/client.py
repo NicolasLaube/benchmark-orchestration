@@ -21,10 +21,11 @@ class InferenceClient:
         self,
         endpoint: str,
         timeout_sec: float = 120.0,
+        client: httpx.AsyncClient | None = None,
     ) -> None:
         self.endpoint = endpoint
         self.timeout_sec = timeout_sec
-        self._client: httpx.AsyncClient | None = None
+        self._client = client
 
     async def __aenter__(self) -> Self:
         """
@@ -33,7 +34,8 @@ class InferenceClient:
         Returns:
             InferenceClient: The instance of the InferenceClient.
         """
-        self._client = httpx.AsyncClient(timeout=self.timeout_sec)
+        if self._client is None:
+            self._client = httpx.AsyncClient(timeout=self.timeout_sec)
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:

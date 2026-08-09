@@ -5,7 +5,8 @@ on:
   pull_request:
 
 jobs:
-  test: 
+  quality: 
+    name: Quality
     runs-on: ubuntu-latest
 
     steps:
@@ -18,20 +19,42 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --all-packages --dev
 
-      - name: Run orchestrator tests
-        run: uv run pytest services/orchestrator/tests
-
-      - name: Run inference service tests
-        run: uv run pytest services/inference_service/tests
-
       - name: Lint
         run: uv run ruff check .
 
-  docker-build:
+      - name: Run orchestrator tests
+        run: uv run pytest services/orchestrator/tests/unit
+
+      - name: Run inference service tests
+        run: uv run pytest services/inference_service/tests/unit
+
+  integration:
+    name: Integration tests
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+
+      - name: Install dependencies
+        run: uv sync --locked --all-packages --dev
+
+      - name: Run integration tests
+        run: uv run pytest \
+          services/inference_service/tests/integration \
+          services/orchestrator/tests/integration
+
+  docker-build:
+    name: Docker
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Validate compose
         run: docker compose config --quiet
