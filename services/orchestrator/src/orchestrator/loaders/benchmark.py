@@ -41,7 +41,7 @@ class LoaderCsvBenchmark:
             if reader.fieldnames is None:
                 raise ValueError(f"BenchmarkJob CSV is empty or invalid: {csv_path}")
 
-            missing_columns = self.REQUIRED_COLUMNS - set(reader.fieldnames)
+            missing_columns = self.requied_columns - set(reader.fieldnames)
             if missing_columns:
                 raise ValueError(
                     f"BenchmarkJob CSV {csv_path} is missing required columns: "
