@@ -1,0 +1,12 @@
+name: CI
+
+on:
+  push
+
+jobs:
+  hello: 
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: hello
+      - run: echo "CI is running"
