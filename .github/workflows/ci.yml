@@ -27,14 +27,14 @@ jobs:
       - name: Lint
         run: uv run ruff check .
 
-      - name: Validate compose
-        run: docker compose config --quiet
-
   docker-build:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate compose
+        run: docker compose config --quiet
 
       - name: Build inference service
         run: docker build -t inference-service ./services/inference_service
