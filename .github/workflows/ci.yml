@@ -42,10 +42,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --all-packages --dev
 
-      - name: Run integration tests
-        run: uv run pytest \
-          services/inference_service/tests/integration \
-          services/orchestrator/tests/integration
+      - name: Run orchestrator integration tests
+        run: uv run pytest services/orchestrator/tests/integration
+
+      - name: Run inference service integration tests
+        run: uv run pytest services/inference_service/tests/integration
 
   docker-build:
     name: Docker
