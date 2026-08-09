@@ -29,3 +29,15 @@ jobs:
 
       - name: Validate compose
         run: docker compose config --quiet
+
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build inference service
+        run: docker build -t inference-service ./services/inference_service
+
+      - name: Build orchestrator
+        run: docker build -t orchestrator ./services/orchestrator
