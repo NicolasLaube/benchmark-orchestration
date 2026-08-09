@@ -11,7 +11,8 @@ from orchestrator.loaders.models import BenchmarkJob, BenchmarkQuestion
 class LoaderCsvBenchmark:
     """Loader for reading benchmark questions from a CSV file."""
 
-    REQUIRED_COLUMNS = {"id", "question", "expected_answer"}
+    def __init__(self):
+        self.requied_columns = {"id", "question", "expected_answer"}
 
     def load(self, job: BenchmarkJob) -> list[BenchmarkQuestion]:
         """

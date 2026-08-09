@@ -232,8 +232,7 @@ class SchedulerRuntime:
 
         async with self.pause_lock:
             previous = self.pause_until
-            if candidate > self.pause_until:
-                self.pause_until = candidate
+            self.pause_until = max(self.pause_until, candidate)
             pause_until = self.pause_until
 
         async with self.metrics_state.lock:

@@ -3,6 +3,8 @@ This module contains the InferenceClient class, which is responsible for sending
 to the inference service and handling the responses.
 """
 
+from typing import Self
+
 import httpx
 
 from orchestrator.inference_client.exceptions import (
@@ -24,7 +26,7 @@ class InferenceClient:
         self.timeout_sec = timeout_sec
         self._client: httpx.AsyncClient | None = None
 
-    async def __aenter__(self) -> "InferenceClient":
+    async def __aenter__(self) -> Self:
         """
         Enter the asynchronous context manager.
 

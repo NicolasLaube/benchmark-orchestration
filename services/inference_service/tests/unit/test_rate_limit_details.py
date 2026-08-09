@@ -1,5 +1,4 @@
 import pytest
-
 from inference_service.api.routes.inference import rate_limit_detail
 
 
