@@ -1,7 +1,7 @@
 from httpx import ASGITransport, AsyncClient
+from inference_service.api.app import create_app
 
-from inference_service.src.inference_service.api.app import create_app
-from inference_service.tests.integration.fakes import (
+from tests.integration.fakes import (
     AllowingConcurrencyLimiter,
     AllowingRpmLimiter,
     FakeOllamaClient,
