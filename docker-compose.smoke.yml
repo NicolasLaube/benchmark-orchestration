@@ -36,3 +36,7 @@ services:
       - "data/queue_smoke.jsonl"
       - "--scheduler"
       - "fixed"
+      - "--max-concurrency"
+      - "2"
+      - "--max-retries"
+      - "0"

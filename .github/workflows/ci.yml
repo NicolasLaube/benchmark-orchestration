@@ -79,8 +79,7 @@ jobs:
         run: docker compose ps
 
       - name: Run smoke benchmark
-        run: docker compose run --rm orchestrator \
-          --queue data/queue_smoke.jsonl
+        run: docker compose run --rm orchestrator
 
       - name: Show logs on failure
         if: failure()
