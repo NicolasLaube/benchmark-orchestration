@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable
 from contextlib import AbstractContextManager
-from typing import Protocol
+from typing import Protocol, Self
 
 from orchestrator.monitoring.run_metrics import RunMetrics
 
@@ -17,7 +17,7 @@ class EventLogger(Protocol):
 
 
 class ProgressView(Protocol):
-    def __enter__(self) -> "ProgressView": ...
+    def __enter__(self) -> Self: ...
     def __exit__(self, exc_type, exc, tb) -> None: ...
     def refresh(self) -> None: ...
     def final_summary(self) -> object: ...

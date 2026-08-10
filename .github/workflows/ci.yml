@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality: 
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+      
+      - name: Install dependencies
+        run: uv sync --locked --all-packages --dev
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Run orchestrator tests
+        run: uv run pytest services/orchestrator/tests/unit
+
+      - name: Run inference service tests
+        run: uv run pytest services/inference_service/tests/unit
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+
+      - name: Install dependencies
+        run: uv sync --locked --all-packages --dev
+
+      - name: Run orchestrator integration tests
+        run: uv run pytest services/orchestrator/tests/integration
+
+      - name: Run inference service integration tests
+        run: uv run pytest services/inference_service/tests/integration
+
+  docker-build:
+    name: Docker
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate compose
+        run: docker compose config --quiet
+
+      - name: Build inference service
+        run: docker build -t inference-service ./services/inference_service
+
+      - name: Build orchestrator
+        run: docker build -t orchestrator ./services/orchestrator
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start stack
+        run: docker compose up -d --build
+
+      - name: Check services
+        run: docker compose ps
+
+      - name: Run smoke benchmark
+        run: |
+          docker compose -f docker-compose.smoke.yml run --rm orchestrator \
+            --queue data/queue_smoke.jsonl \
+            --scheduler fixed \
+            --max-concurrency 2 \
+            --max-retries 0
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down

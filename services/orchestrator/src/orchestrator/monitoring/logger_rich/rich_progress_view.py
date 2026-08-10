@@ -1,3 +1,5 @@
+from typing import Self
+
 from orchestrator.monitoring.run_metrics import RunMetrics
 from orchestrator.utils.format_duration import format_duration
 from rich.align import Align
@@ -24,7 +26,7 @@ class RichProgressView:
             transient=False,
         )
 
-    def __enter__(self) -> "RichProgressView":
+    def __enter__(self) -> Self:
         self.live.__enter__()
         return self
 
@@ -56,7 +58,11 @@ class RichProgressView:
         p95_latency = metrics.p95_latency_ms()
 
         latency_text = "-"
-        if avg_latency is not None and p50_latency is not None and p95_latency is not None:
+        if (
+            avg_latency is not None
+            and p50_latency is not None
+            and p95_latency is not None
+        ):
             latency_text = f"{avg_latency:.0f} / {p50_latency} / {p95_latency} ms"
 
         table = Table.grid(padding=(0, 2))
@@ -67,7 +73,9 @@ class RichProgressView:
         table.add_row("HTTP attempts", str(metrics.http_attempts))
         table.add_row(
             "Overall throughput",
-            (f"{metrics.throughput():.2f} req/s ({metrics.throughput_rpm():.1f} req/min)"),
+            (
+                f"{metrics.throughput():.2f} req/s ({metrics.throughput_rpm():.1f} req/min)"
+            ),
         )
         table.add_row(
             "Recent throughput (30s)",
@@ -153,7 +161,9 @@ class RichProgressView:
         table.add_row("Accuracy", f"{metrics.accuracy():.1f} %")
         table.add_row(
             "Throughput",
-            (f"{metrics.throughput():.2f} req/s ({metrics.throughput_rpm():.1f} req/min)"),
+            (
+                f"{metrics.throughput():.2f} req/s ({metrics.throughput_rpm():.1f} req/min)"
+            ),
         )
         table.add_row(
             "Average latency",

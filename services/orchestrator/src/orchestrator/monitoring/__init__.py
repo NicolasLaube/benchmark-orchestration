@@ -8,8 +8,8 @@ from orchestrator.monitoring.logger_rich.rich_progress_view import (
 from orchestrator.monitoring.run_metrics import RunMetrics
 
 __all__ = [
-    "log_event",
     "RichProgressView",
     "RunMetrics",
     "configure_logging",
+    "log_event",
 ]

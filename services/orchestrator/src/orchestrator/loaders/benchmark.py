@@ -11,7 +11,8 @@ from orchestrator.loaders.models import BenchmarkJob, BenchmarkQuestion
 class LoaderCsvBenchmark:
     """Loader for reading benchmark questions from a CSV file."""
 
-    REQUIRED_COLUMNS = {"id", "question", "expected_answer"}
+    def __init__(self):
+        self.requied_columns = {"id", "question", "expected_answer"}
 
     def load(self, job: BenchmarkJob) -> list[BenchmarkQuestion]:
         """
@@ -40,7 +41,7 @@ class LoaderCsvBenchmark:
             if reader.fieldnames is None:
                 raise ValueError(f"BenchmarkJob CSV is empty or invalid: {csv_path}")
 
-            missing_columns = self.REQUIRED_COLUMNS - set(reader.fieldnames)
+            missing_columns = self.requied_columns - set(reader.fieldnames)
             if missing_columns:
                 raise ValueError(
                     f"BenchmarkJob CSV {csv_path} is missing required columns: "

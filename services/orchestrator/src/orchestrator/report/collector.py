@@ -79,8 +79,8 @@ class ReportMetricsCollector:
 
     @staticmethod
     def _safe_ratio(
-        numerator: int | float,
-        denominator: int | float,
+        numerator: float,
+        denominator: float,
         *,
         digits: int = 4,
     ) -> float:

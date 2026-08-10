@@ -2,7 +2,9 @@
 name = "benchmark-orchestration-workspace"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "ruff>=0.16.2",
+]
 
 [tool.uv]
 package = false
@@ -24,5 +26,5 @@ dev = [
 asyncio_mode = "auto"
 testpaths = [
     "services/orchestrator/tests",
-    "services/inference-service/tests",
+    "services/inference_service/tests",
 ]

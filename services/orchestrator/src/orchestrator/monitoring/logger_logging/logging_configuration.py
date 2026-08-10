@@ -16,7 +16,7 @@ from rich.logging import RichHandler
 
 def configure_logging(
     log_level: str,
-    console: Console,  # noqa: F821
+    console: Console,
 ) -> logging.Logger:
     level = getattr(
         logging,
