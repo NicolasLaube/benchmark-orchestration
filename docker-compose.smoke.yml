@@ -1,0 +1,38 @@
+services: 
+
+  fake-inference:
+    build: 
+      context: ./tests/docker/fake_inference
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')",
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+
+  orchestrator:
+    build:
+      context: ./services/orchestrator
+
+    environment:
+      INFERENCE_ENDPOINT: http://fake-inference:8000/infer
+
+    depends_on:
+      fake-inference:
+        condition: service_healthy
+
+    volumes:
+      - ./data:/app/data
+
+    command:
+      - "--queue"
+      - "data/queue_smoke.jsonl"
+      - "--scheduler"
+      - "fixed"

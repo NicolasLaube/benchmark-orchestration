@@ -65,3 +65,27 @@ jobs:
 
       - name: Build orchestrator
         run: docker build -t orchestrator ./services/orchestrator
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start stack
+        run: docker compose up -d --build
+
+      - name: Check services
+        run: docker compose ps
+
+      - name: Run smoke benchmark
+        run: docker compose run --rm orchestrator \
+          --queue data/queue_smoke.jsonl
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down
