@@ -79,7 +79,12 @@ jobs:
         run: docker compose ps
 
       - name: Run smoke benchmark
-        run: docker compose run --rm orchestrator
+        run: |
+          docker compose -f docker-compose.smoke.yml run --rm orchestrator \
+            --queue data/queue_smoke.jsonl \
+            --scheduler fixed \
+            --max-concurrency 2 \
+            --max-retries 0
 
       - name: Show logs on failure
         if: failure()
