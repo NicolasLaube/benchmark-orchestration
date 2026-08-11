@@ -77,8 +77,7 @@ def _create_scheduler(
         return FixedConcurrencyScheduler(
             inference_client=client,
             grader=grader,
-            max_concurrency=(scheduler_config.max_concurrency),
-            max_retries=scheduler_config.max_retries,
+            config=scheduler_config,
         )
 
     raise ValueError(f"Unsupported scheduler config: {type(scheduler_config).__name__}")
