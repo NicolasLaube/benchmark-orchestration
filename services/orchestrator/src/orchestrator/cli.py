@@ -1,4 +1,5 @@
 import asyncio
+from typing import Annotated
 
 import typer
 
@@ -19,10 +20,13 @@ def run_benchmark(
     queue: str = typer.Option(
         "data/queue_smoke.jsonl",
     ),
-    scheduler_mode: SchedulerMode = typer.Option(
-        SchedulerMode.AIMD,
-        "--scheduler",
-    ),
+    scheduler_mode: Annotated[
+        SchedulerMode,
+        typer.Option(
+            "--scheduler",
+            help="Scheduler strategy: fixed or aimd.",
+        ),
+    ] = SchedulerMode.AIMD,
     max_concurrency: int = typer.Option(4),
     max_target_concurrency: int = typer.Option(32),
     max_retries: int = typer.Option(3),

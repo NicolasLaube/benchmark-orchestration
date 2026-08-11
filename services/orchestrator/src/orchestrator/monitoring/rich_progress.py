@@ -1,13 +1,14 @@
 from typing import Self
 
-from orchestrator.monitoring.run_metrics import RunMetrics
-from orchestrator.utils.format_duration import format_duration
 from rich.align import Align
 from rich.console import Console, Group
 from rich.live import Live
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
+
+from orchestrator.monitoring.run_metrics import RunMetrics
+from orchestrator.utils.format_duration import format_duration
 
 
 class RichProgressView:

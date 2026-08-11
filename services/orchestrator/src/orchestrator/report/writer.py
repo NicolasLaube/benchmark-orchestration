@@ -6,9 +6,6 @@ format, including metadata such as the generation timestamp, summary statistics,
 results for each question.
 """
 
-import json
-from dataclasses import asdict
-from datetime import UTC, datetime
 from pathlib import Path
 
 from orchestrator.report.models import BenchmarkReport

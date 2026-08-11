@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import Enum
 
 from orchestrator.schedulers.aimd.config import AdaptiveAimdSchedulerConfig
 from orchestrator.schedulers.fixed.config import FixedConcurrencySchedulerConfig
@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class SchedulerMode(StrEnum):
+class SchedulerMode(str, Enum):
     FIXED = "fixed"
     AIMD = "aimd"
 

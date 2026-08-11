@@ -26,7 +26,6 @@ from orchestrator.schedulers.common.metrics import SchedulerMetrics
 from orchestrator.schedulers.common.models import AttemptOutcome
 from orchestrator.schedulers.common.types import (
     EventLogger,
-    ProgressView,
     ProgressViewFactory,
 )
 from rich.console import Console
