@@ -9,7 +9,7 @@ for controlled retries without overwhelming the system with immediate retry atte
 import time
 from collections import deque
 
-from orchestrator.loaders.models import BenchmarkQuestion
+from orchestrator.io.models import BenchmarkQuestion
 
 
 class DelayedRetries:

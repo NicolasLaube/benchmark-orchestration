@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from orchestrator.loaders.benchmark import BenchmarkQuestion
+from orchestrator.io.benchmark import BenchmarkQuestion
 from orchestrator.report.models import QuestionResult
 
 

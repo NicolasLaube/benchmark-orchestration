@@ -8,72 +8,86 @@ such as total requests, successful requests, failure count, accuracy, latency st
 from collections import defaultdict
 from statistics import median
 
-from orchestrator.report.models import QuestionResult
+from orchestrator.report.models import (
+    BenchmarkMetrics,
+    LatencyMetrics,
+    Metrics,
+    QuestionResult,
+    ReportSummary,
+)
 from orchestrator.utils.compute_percentile import percentile
 
 
-class ReportMetricsCollector:
+class MetricsCollector:
     def summarize(
         self,
         results: list[QuestionResult],
         total_wall_time_sec: float,
-    ) -> dict:
-        return {
-            "total_wall_time_sec": round(total_wall_time_sec, 3),
-            **self._metrics(results, include_latency_range=True),
-            "throughput_req_s": self._safe_ratio(
+    ) -> ReportSummary:
+        metrics = self._metrics(
+            results,
+            include_latency_range=True,
+        )
+
+        return ReportSummary(
+            **metrics.model_dump(),
+            total_wall_time_sec=round(
+                total_wall_time_sec,
+                3,
+            ),
+            throughput_req_s=self._safe_ratio(
                 len(results),
                 total_wall_time_sec,
                 digits=3,
             ),
-            "benchmarks": self._per_benchmark_metrics(results),
-        }
+            benchmarks=self._per_benchmark_metrics(results),
+        )
 
     def _metrics(
         self,
         results: list[QuestionResult],
         *,
         include_latency_range: bool = False,
-    ) -> dict:
-        successful = [r for r in results if r.status == "success"]
-        latencies = [r.latency_ms for r in successful if r.latency_ms is not None]
+    ) -> Metrics:
+        successful = [result for result in results if result.status == "success"]
 
-        latency_metrics = {
-            "p50": median(latencies) if latencies else None,
-            "p95": percentile(latencies, 0.95),
-        }
+        latencies = [
+            result.latency_ms for result in successful if result.latency_ms is not None
+        ]
 
-        if include_latency_range:
-            latency_metrics |= {
-                "min": min(latencies) if latencies else None,
-                "max": max(latencies) if latencies else None,
-            }
-
-        return {
-            "total_requests": len(results),
-            "successful_requests": len(successful),
-            "failure_count": sum(r.status == "failed" for r in results),
-            "accuracy": self._safe_ratio(
-                sum(bool(r.correct) for r in successful),
+        return Metrics(
+            total_requests=len(results),
+            successful_requests=len(successful),
+            failure_count=sum(result.status == "failed" for result in results),
+            accuracy=self._safe_ratio(
+                sum(bool(result.correct) for result in successful),
                 len(successful),
             ),
-            "latency_ms": latency_metrics,
-        }
+            latency_ms=LatencyMetrics(
+                p50=median(latencies) if latencies else None,
+                p95=percentile(latencies, 0.95),
+                min=(min(latencies) if include_latency_range and latencies else None),
+                max=(max(latencies) if include_latency_range and latencies else None),
+            ),
+        )
 
     def _per_benchmark_metrics(
         self,
         results: list[QuestionResult],
-    ) -> list[dict]:
-        by_benchmark: dict[str, list[QuestionResult]] = defaultdict(list)
+    ) -> list[BenchmarkMetrics]:
+        by_benchmark: dict[
+            str,
+            list[QuestionResult],
+        ] = defaultdict(list)
 
         for result in results:
-            by_benchmark[result.benchmark_id].append(result)
+            by_benchmark[str(result.benchmark_id)].append(result)
 
         return [
-            {
-                "benchmark_id": benchmark_id,
-                **self._metrics(benchmark_results),
-            }
+            BenchmarkMetrics(
+                benchmark_id=benchmark_id,
+                **self._metrics(benchmark_results).model_dump(),
+            )
             for benchmark_id, benchmark_results in sorted(by_benchmark.items())
         ]
 
@@ -84,4 +98,10 @@ class ReportMetricsCollector:
         *,
         digits: int = 4,
     ) -> float:
-        return round(numerator / denominator, digits) if denominator else 0.0
+        if denominator == 0:
+            return 0.0
+
+        return round(
+            numerator / denominator,
+            digits,
+        )

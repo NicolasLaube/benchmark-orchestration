@@ -11,7 +11,7 @@ import logging
 
 from orchestrator.grader.substring import SubstringGrader
 from orchestrator.inference_client.client import InferenceClient
-from orchestrator.loaders.benchmark import BenchmarkQuestion
+from orchestrator.io.benchmark import BenchmarkQuestion
 from orchestrator.report.models import QuestionResult
 from orchestrator.schedulers.common.classify_rate_limit_reason import (
     classify_rate_limit_reason,
@@ -95,7 +95,6 @@ class FixedConcurrencyScheduler:
                 if progress_view is not None:
                     progress_view.refresh()
 
-        self.runtime.print_final_summary(progress_view)
         log_final_summary(
             self.runtime,
             scheduler="fixed_concurrency",

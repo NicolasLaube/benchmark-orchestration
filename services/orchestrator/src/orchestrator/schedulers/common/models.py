@@ -7,7 +7,7 @@ performance.
 
 from dataclasses import dataclass
 
-from orchestrator.loaders.models import BenchmarkQuestion
+from orchestrator.io.models import BenchmarkQuestion
 from orchestrator.report.models import QuestionResult
 
 

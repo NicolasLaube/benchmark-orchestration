@@ -1,4 +1,4 @@
-from orchestrator.loaders.models import BenchmarkQuestion
+from orchestrator.io.models import BenchmarkQuestion
 from orchestrator.schedulers.aimd.config import AdaptiveAimdSchedulerConfig
 from orchestrator.schedulers.aimd.controller import (
     AdaptiveAimdController,
