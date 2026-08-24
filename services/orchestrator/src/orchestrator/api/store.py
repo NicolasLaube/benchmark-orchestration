@@ -1,7 +1,6 @@
 from enum import StrEnum
 from uuid import UUID
 
-from orchestrator.api.schemas import RunResponse
 from orchestrator.report.models import BenchmarkReport
 from pydantic import BaseModel
 
