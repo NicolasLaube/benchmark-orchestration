@@ -1,4 +1,5 @@
 from orchestrator.application.config import SchedulerMode
+from orchestrator.report.models import BenchmarkReport
 from pydantic import BaseModel, Field
 
 
@@ -21,3 +22,9 @@ class RunRequest(BaseModel):
         default=3,
         ge=0,
     )
+
+
+class RunResponse:
+    run_id: str
+
+    report: BenchmarkReport
