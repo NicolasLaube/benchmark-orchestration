@@ -9,7 +9,10 @@ import logging
 import random
 import time
 from contextlib import nullcontext
+from uuid import UUID
 
+from orchestrator.events.events import QuestionCompleted
+from orchestrator.events.producer import RedisEventProducer
 from orchestrator.grader.substring import SubstringGrader
 from orchestrator.inference_client.client import (
     InferenceClient,
@@ -43,6 +46,7 @@ class SchedulerRuntime:
         event_logger: EventLogger = log_event,
         console: Console | None = None,
         progress_view_factory: ProgressViewFactory | None = RichProgressView,
+        event_producer: RedisEventProducer,
     ) -> None:
         # SchedulerRuntime is initialized with an inference client, a grader, and optional logging
         # and console parameters.
@@ -52,6 +56,8 @@ class SchedulerRuntime:
         self.event_logger = event_logger
         self.console = console or Console()
         self.progress_view_factory = progress_view_factory
+
+        self.event_producer = event_producer
 
         # Metrics state (RunMetrics) is managed by SchedulerMetrics, which handles concurrency
         # and locking.
@@ -92,6 +98,24 @@ class SchedulerRuntime:
             target_concurrency=target_concurrency,
             launch_interval_sec=launch_interval_sec,
             phase=phase,
+        )
+
+    async def publish_result(
+        self,
+        *,
+        run_id: UUID,
+        result: QuestionResult,
+    ) -> None:
+        await self.event_producer.publish_question_completed(
+            QuestionCompleted(
+                run_id=run_id,
+                question_id=result.question_id,
+                success=result.status == "success",
+                latency_ms=result.latency_ms,
+                attempts=result.attempts,
+                answer=result.answer,
+                error=result.error,
+            )
         )
 
     def progress_context(self):

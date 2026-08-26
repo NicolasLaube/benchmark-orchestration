@@ -16,8 +16,8 @@ from orchestrator.application.run_benchmark import (
 )
 from orchestrator.io.models import BenchmarkQuestion
 from orchestrator.persistence.db import SessionLocal
-from orchestrator.persistence.models import RunModel
-from orchestrator.persistence.repositories.run_repository import RunRepository
+from orchestrator.persistence.models.runs import RunModel
+from orchestrator.persistence.repositories.run import RunRepository
 from orchestrator.schedulers.aimd.config import AdaptiveAimdSchedulerConfig
 from orchestrator.schedulers.fixed.config import FixedConcurrencySchedulerConfig
 
@@ -202,6 +202,7 @@ async def run_benchmark(
         config=config,
         settings=Settings(),
         questions=questions,
+        run_id=run_id,
     )
 
     # run_store.update_report(run_id=run_id, report=report)

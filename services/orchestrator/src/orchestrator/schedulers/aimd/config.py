@@ -82,7 +82,9 @@ class AdaptiveAimdSchedulerConfig:
             raise ValueError("min_launch_interval_sec must be >= 0")
 
         if self.max_launch_interval_sec < self.min_launch_interval_sec:
-            raise ValueError("max_launch_interval_sec must be >= min_launch_interval_sec")
+            raise ValueError(
+                "max_launch_interval_sec must be >= min_launch_interval_sec"
+            )
 
         if self.max_retries < 0:
             raise ValueError("max_retries must be greater than or equal to 0")
@@ -91,7 +93,9 @@ class AdaptiveAimdSchedulerConfig:
             raise ValueError("max_backoff_sec must be greater than 0")
 
         if self.successes_before_concurrency_increase <= 0:
-            raise ValueError("successes_before_concurrency_increase must be greater than 0")
+            raise ValueError(
+                "successes_before_concurrency_increase must be greater than 0"
+            )
 
         if self.successes_before_rpm_probe < 0:
             raise ValueError("successes_before_rpm_probe must be >= 0")

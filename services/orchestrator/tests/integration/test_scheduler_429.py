@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import httpx
 import pytest
 from fastapi import FastAPI, Response
@@ -8,6 +10,8 @@ from orchestrator.schedulers.fixed import (
     FixedConcurrencyScheduler,
     FixedConcurrencySchedulerConfig,
 )
+
+from .fake import FakeEventProducer
 
 
 def create_rate_limited_fake_app():
@@ -57,6 +61,7 @@ async def test_scheduler_retries_after_rate_limit():
                 max_retries=1,
                 max_backoff_sec=1,
             ),
+            event_producer=FakeEventProducer(),
         )
 
         questions = [
@@ -68,7 +73,7 @@ async def test_scheduler_retries_after_rate_limit():
             ),
         ]
 
-        results = await scheduler.run_questions(questions)
+        results = await scheduler.run_questions(questions, run_id=uuid4())
 
     assert len(results) == 1
     assert results[0].correct
