@@ -6,7 +6,6 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from orchestrator.api.load import load_questions_from_upload
-from orchestrator.api.store import RunState, RunStatus, run_store
 from orchestrator.application.config import (
     RunConfig,
     SchedulerMode,
@@ -16,7 +15,9 @@ from orchestrator.application.run_benchmark import (
     execute_benchmark,
 )
 from orchestrator.io.models import BenchmarkQuestion
-from orchestrator.report.models import BenchmarkReport
+from orchestrator.persistence.db import SessionLocal
+from orchestrator.persistence.models import RunModel
+from orchestrator.persistence.repositories.run_repository import RunRepository
 from orchestrator.schedulers.aimd.config import AdaptiveAimdSchedulerConfig
 from orchestrator.schedulers.fixed.config import FixedConcurrencySchedulerConfig
 
@@ -46,19 +47,22 @@ async def create_run(
         Form(),
     ] = 3,
 ):
-    run_id = uuid4()
 
     questions = await load_questions_from_upload(file)
 
-    run_store.create(
-        RunState(
-            run_id=run_id,
-            total=len(questions),
-            completed=0,
-            report=None,
-            status=RunStatus.queued,
+    async with SessionLocal() as session:
+        repo = RunRepository(session=session)
+
+        run_id = uuid4()
+
+        await repo.create(
+            RunModel(
+                id=run_id,
+                status="queued",
+                total=len(questions),
+                completed=0,
+            )
         )
-    )
 
     asyncio.create_task(
         run_benchmark(
@@ -73,40 +77,49 @@ async def create_run(
 
     return {
         "run_id": run_id,
-        "status": RunStatus.queued,
+        "status": "queued",
     }
 
 
 @runs_router.get("/{run_id}")
 async def get_state(run_id: UUID):
-    run_state: RunState = run_store.get(run_id)
+    async with SessionLocal() as session:
+        repo = RunRepository(session=session)
 
-    if run_state is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"The run {run_id} doesn't exist",
-        )
+        run = await repo.get(run_id)
 
-    return run_store.get(run_id=run_id)
+        if run is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"The run {run_id} doesn't exist",
+            )
+
+        return run
 
 
 @runs_router.get("/{run_id}/report")
 async def get_report(run_id: UUID):
-    run_state: RunState = run_store.get(run_id)
+    async with SessionLocal() as session:
+        repo = RunRepository(session=session)
 
-    if run_state is None:
+        run = await repo.get(run_id)
+
+        if run is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"The run {run_id} doesn't exist",
+            )
+
+        if run.status != "finished":
+            raise HTTPException(
+                status_code=409,
+                detail=f"The run {run_id} didn't finish yet",
+            )
+
         raise HTTPException(
-            status_code=404,
-            detail=f"The run {run_id} doesn't exist",
+            status_code=501,
+            detail="Report persistence is not implemented yet",
         )
-
-    if run_state.status != RunStatus.finished:
-        raise HTTPException(
-            status_code=409,
-            detail=f"The run {run_id} didn't finish yet",
-        )
-
-    return run_store.get(run_id=run_id).report
 
 
 @runs_router.get(
@@ -120,31 +133,37 @@ async def get_report(run_id: UUID):
     },
 )
 async def get_events(run_id: UUID) -> StreamingResponse:
-    run = run_store.get(run_id=run_id)
+    async with SessionLocal() as session:
+        repo = RunRepository(session)
 
-    if run is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"The run {run_id} doesn't exist",
-        )
+        run = await repo.get(run_id)
+
+        if run is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"The run {run_id} doesn't exist",
+            )
 
     async def event_generator():
-        run = run_store.get(run_id=run_id)
-
         while True:
+            async with SessionLocal() as session:
+                repo = RunRepository(session)
+
+                run = await repo.get(run_id)
+
+            if run is None:
+                break
+
             payload = {
-                "run_id": str(run.run_id),
-                "status": run.status.value,
+                "run_id": str(run.id),
+                "status": run.status,
                 "completed": run.completed,
                 "total": run.total,
             }
 
             yield f"data: {json.dumps(payload)}\n\n"
 
-            if run.status in {
-                RunStatus.finished,
-                RunStatus.failed,
-            }:
+            if run.status in {"finished", "failed"}:
                 break
 
             await asyncio.sleep(0.5)
@@ -179,10 +198,10 @@ async def run_benchmark(
         scheduler=scheduler_config,
     )
 
-    report: BenchmarkReport = await execute_benchmark(
+    await execute_benchmark(
         config=config,
         settings=Settings(),
         questions=questions,
     )
 
-    run_store.update_report(run_id=run_id, report=report)
+    # run_store.update_report(run_id=run_id, report=report)

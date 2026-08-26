@@ -3,8 +3,13 @@ name = "benchmark-orchestration-workspace"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.19.1",
+    "asyncpg>=0.31.0",
+    "greenlet>=3.5.5",
+    "psycopg[binary]>=3.3.4",
     "python-multipart>=0.0.32",
     "ruff>=0.16.2",
+    "sqlalchemy>=2.0.52",
 ]
 
 [tool.uv]
