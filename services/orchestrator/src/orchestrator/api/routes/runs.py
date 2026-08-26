@@ -1,8 +1,10 @@
 import asyncio
+import json
 from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from orchestrator.api.load import load_questions_from_upload
 from orchestrator.api.store import RunState, RunStatus, run_store
 from orchestrator.application.config import (
@@ -105,6 +107,52 @@ async def get_report(run_id: UUID):
         )
 
     return run_store.get(run_id=run_id).report
+
+
+@runs_router.get(
+    "/{run_id}/events",
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "content": {"text/event-stream": {}},
+            "description": "Stream run progress using Server-Sent Events",
+        }
+    },
+)
+async def get_events(run_id: UUID) -> StreamingResponse:
+    run = run_store.get(run_id=run_id)
+
+    if run is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"The run {run_id} doesn't exist",
+        )
+
+    async def event_generator():
+        run = run_store.get(run_id=run_id)
+
+        while True:
+            payload = {
+                "run_id": str(run.run_id),
+                "status": run.status.value,
+                "completed": run.completed,
+                "total": run.total,
+            }
+
+            yield f"data: {json.dumps(payload)}\n\n"
+
+            if run.status in {
+                RunStatus.finished,
+                RunStatus.failed,
+            }:
+                break
+
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+    )
 
 
 async def run_benchmark(
