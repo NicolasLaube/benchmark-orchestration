@@ -5,7 +5,7 @@ This module provides a loader for reading benchmark jobs from a JSON Lines (JSON
 import json
 from pathlib import Path
 
-from orchestrator.loaders.models import BenchmarkJob
+from orchestrator.io.models import BenchmarkJob
 
 
 class LoaderJsonlQueue:

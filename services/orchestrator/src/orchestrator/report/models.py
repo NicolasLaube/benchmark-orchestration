@@ -6,7 +6,10 @@ error messages.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
+
+from pydantic import BaseModel
 
 
 @dataclass(frozen=True)
@@ -26,3 +29,34 @@ class QuestionResult:
     attempts: int
     status: Literal["success", "failed"]
     error: str | None = None
+
+
+class LatencyMetrics(BaseModel):
+    p50: float | None = None
+    p95: float | None = None
+    min: float | None = None
+    max: float | None = None
+
+
+class Metrics(BaseModel):
+    total_requests: int
+    successful_requests: int
+    failure_count: int
+    accuracy: float
+    latency_ms: LatencyMetrics
+
+
+class BenchmarkMetrics(Metrics):
+    benchmark_id: str
+
+
+class ReportSummary(Metrics):
+    total_wall_time_sec: float
+    throughput_req_s: float
+    benchmarks: list[BenchmarkMetrics]
+
+
+class BenchmarkReport(BaseModel):
+    generated_at: datetime
+    summary: ReportSummary
+    results: list[QuestionResult]

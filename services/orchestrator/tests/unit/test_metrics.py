@@ -1,6 +1,6 @@
 # tests/test_metrics.py
 
-from orchestrator.report.collector import ReportMetricsCollector
+from orchestrator.report.collector import MetricsCollector
 from orchestrator.report.models import QuestionResult
 
 
@@ -33,13 +33,13 @@ def test_metrics_collector_summarizes_results() -> None:
         ),
     ]
 
-    summary = ReportMetricsCollector().summarize(
+    summary = MetricsCollector().summarize(
         results=results,
         total_wall_time_sec=2.0,
     )
 
-    assert summary["total_requests"] == 2
-    assert summary["successful_requests"] == 1
-    assert summary["failure_count"] == 1
-    assert summary["accuracy"] == 1.0
-    assert summary["throughput_req_s"] == 1.0
+    assert summary.total_requests == 2
+    assert summary.successful_requests == 1
+    assert summary.failure_count == 1
+    assert summary.accuracy == 1.0
+    assert summary.throughput_req_s == 1.0

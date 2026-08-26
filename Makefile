@@ -51,7 +51,7 @@ LIMIT_REASONS_FLAG ?= --expose-limit-reasons
 
 BASE_URL ?= http://localhost:$(PORT)
 INFERENCE_ENDPOINT ?= $(BASE_URL)/infer
-QUEUE ?= data/queue.jsonl
+QUEUE ?= data/queue_smoke.jsonl
 RESULTS_DIR ?= results
 OUT ?= $(RESULTS_DIR)/run.json
 MAX_TARGET_CONCURRENCY ?= 32
@@ -126,14 +126,10 @@ benchmark:
 	@mkdir -p "$(RESULTS_DIR)"
 	uv run orchestrator \
 		--queue "$(QUEUE)" \
-		--endpoint "$(INFERENCE_ENDPOINT)" \
-		--out "$(OUT)" \
-		--timeout-sec "$(TIMEOUT_SEC)" \
 		--max-retries "$(MAX_RETRIES)" \
 		--scheduler "$(SCHEDULER)" \
 		--max-concurrency "$(MAX_CONCURRENCY)" \
 		--max-target-concurrency "$(MAX_TARGET_CONCURRENCY)" \
-		--log-level "$(LOG_LEVEL)" \
 		$(ORCHESTRATOR_ARGS)
 
 smoke:

@@ -16,9 +16,9 @@ from orchestrator.inference_client.client import (
     InferenceClientError,
     InferenceRateLimitedError,
 )
-from orchestrator.loaders.models import BenchmarkQuestion
+from orchestrator.io.models import BenchmarkQuestion
 from orchestrator.monitoring.logger_logging.log_event import log_event
-from orchestrator.monitoring.logger_rich.rich_progress_view import (
+from orchestrator.monitoring.rich_progress import (
     RichProgressView,
 )
 from orchestrator.report.models import QuestionResult
@@ -26,7 +26,6 @@ from orchestrator.schedulers.common.metrics import SchedulerMetrics
 from orchestrator.schedulers.common.models import AttemptOutcome
 from orchestrator.schedulers.common.types import (
     EventLogger,
-    ProgressView,
     ProgressViewFactory,
 )
 from rich.console import Console
@@ -108,14 +107,6 @@ class SchedulerRuntime:
         if self.progress_view_factory is None:
             return nullcontext(None)
         return self.progress_view_factory(metrics)
-
-    def print_final_summary(self, progress_view: ProgressView | None) -> None:
-        """
-        Prints the final summary of the scheduler run, including metrics and any relevant
-        information.
-        """
-        if progress_view is not None:
-            self.console.print(progress_view.final_summary())
 
     async def execute_attempt(
         self,

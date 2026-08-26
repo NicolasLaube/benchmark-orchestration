@@ -1,8 +1,8 @@
 import logging
 
-from orchestrator.loaders.benchmark import LoaderCsvBenchmark
-from orchestrator.loaders.models import BenchmarkQuestion
-from orchestrator.loaders.queue import LoaderJsonlQueue
+from orchestrator.io.benchmark import LoaderCsvBenchmark
+from orchestrator.io.models import BenchmarkQuestion
+from orchestrator.io.queue import LoaderJsonlQueue
 from orchestrator.report.models import QuestionResult
 from orchestrator.schedulers.base import Scheduler
 

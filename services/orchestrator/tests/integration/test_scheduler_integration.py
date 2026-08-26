@@ -3,7 +3,7 @@ import pytest
 from fastapi import FastAPI
 from orchestrator.grader.substring import SubstringGrader
 from orchestrator.inference_client.client import InferenceClient
-from orchestrator.loaders.models import BenchmarkQuestion
+from orchestrator.io.models import BenchmarkQuestion
 from orchestrator.schedulers.fixed import (
     FixedConcurrencyScheduler,
     FixedConcurrencySchedulerConfig,

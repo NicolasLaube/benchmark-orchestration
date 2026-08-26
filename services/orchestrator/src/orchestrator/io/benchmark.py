@@ -5,7 +5,7 @@ This module provides a loader for reading benchmark questions from a CSV file.
 import csv
 from pathlib import Path
 
-from orchestrator.loaders.models import BenchmarkJob, BenchmarkQuestion
+from orchestrator.io.models import BenchmarkJob, BenchmarkQuestion
 
 
 class LoaderCsvBenchmark:

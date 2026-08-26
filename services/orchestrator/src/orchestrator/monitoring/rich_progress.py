@@ -1,13 +1,14 @@
 from typing import Self
 
-from orchestrator.monitoring.run_metrics import RunMetrics
-from orchestrator.utils.format_duration import format_duration
 from rich.align import Align
 from rich.console import Console, Group
 from rich.live import Live
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
+
+from orchestrator.monitoring.run_metrics import RunMetrics
+from orchestrator.utils.format_duration import format_duration
 
 
 class RichProgressView:
@@ -127,81 +128,5 @@ class RichProgressView:
             body,
             title="Benchmark Orchestrator",
             border_style="cyan",
-            padding=(1, 2),
-        )
-
-    def final_summary(self) -> Panel:
-        metrics = self.metrics
-        avg_latency = metrics.average_latency_ms()
-
-        table = Table.grid(padding=(0, 2))
-        table.add_column(justify="left", style="bold")
-        table.add_column(justify="right")
-
-        table.add_row(
-            "Total wall time",
-            format_duration(metrics.elapsed_sec()),
-        )
-        table.add_row(
-            "Backpressure pause time",
-            format_duration(metrics.wait_wall_sec()),
-        )
-        table.add_row(
-            "Non-backpressure wall time",
-            format_duration(metrics.useful_wall_sec()),
-        )
-        table.add_row(
-            "Completed",
-            f"{metrics.completed} / {metrics.total}",
-        )
-        table.add_row("Success", str(metrics.success))
-        table.add_row("Failures", str(metrics.failure))
-        table.add_row("HTTP attempts", str(metrics.http_attempts))
-        table.add_row("Retries", str(metrics.retries))
-        table.add_row("Accuracy", f"{metrics.accuracy():.1f} %")
-        table.add_row(
-            "Throughput",
-            (
-                f"{metrics.throughput():.2f} req/s ({metrics.throughput_rpm():.1f} req/min)"
-            ),
-        )
-        table.add_row(
-            "Average latency",
-            f"{avg_latency:.0f} ms" if avg_latency is not None else "-",
-        )
-        table.add_row(
-            "p50 latency",
-            f"{metrics.p50_latency_ms() or '-'} ms",
-        )
-        table.add_row(
-            "p95 latency",
-            f"{metrics.p95_latency_ms() or '-'} ms",
-        )
-        table.add_row(
-            "Learned RPM limit",
-            str(metrics.estimated_rpm_limit or "-"),
-        )
-        table.add_row(
-            "Learned concurrency limit",
-            str(metrics.estimated_concurrency_limit or "-"),
-        )
-        table.add_row(
-            "Rate limits",
-            (
-                f"{metrics.rate_limited} "
-                f"(RPM {metrics.rpm_limited}, "
-                f"conc {metrics.concurrency_limited}, "
-                f"unknown {metrics.generic_overload})"
-            ),
-        )
-        table.add_row(
-            "Peak HTTP in-flight",
-            str(metrics.peak_http_in_flight),
-        )
-
-        return Panel(
-            table,
-            title="Final Summary",
-            border_style="green",
             padding=(1, 2),
         )

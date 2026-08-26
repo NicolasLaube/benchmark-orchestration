@@ -10,7 +10,7 @@ from collections import deque
 
 from orchestrator.grader.substring import SubstringGrader
 from orchestrator.inference_client.client import InferenceClient
-from orchestrator.loaders.benchmark import BenchmarkQuestion
+from orchestrator.io.benchmark import BenchmarkQuestion
 from orchestrator.report.models import QuestionResult
 from orchestrator.schedulers.aimd.config import (
     AdaptiveAimdSchedulerConfig,
@@ -102,7 +102,6 @@ class AdaptiveAimdScheduler:
             if progress_view is not None:
                 progress_view.refresh()
 
-        self.runtime.print_final_summary(progress_view)
         log_final_summary(
             self.runtime,
             scheduler="adaptive_aimd",
@@ -167,7 +166,11 @@ class AdaptiveAimdScheduler:
 
     async def _wait_launch_slot(self) -> None:
         async with self.launch_lock:
-            wait = self.last_launch_at + self.controller.launch_interval_sec - time.monotonic()
+            wait = (
+                self.last_launch_at
+                + self.controller.launch_interval_sec
+                - time.monotonic()
+            )
 
             if wait > 0:
                 await asyncio.sleep(wait)
