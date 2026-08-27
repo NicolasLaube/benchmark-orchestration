@@ -6,11 +6,11 @@ RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml ./pyproject.toml
 COPY src ./src
+COPY alembic.ini ./alembic.ini
+COPY alembic ./alembic
 
 RUN uv sync --no-dev --no-cache
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-ENTRYPOINT [ "orchestrator" ]
-
-CMD [ "--queue", "data/queue.json" ]
+CMD [ "orchestrator"]

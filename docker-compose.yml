@@ -51,23 +51,94 @@ services:
       - "--max-concurrency"
       - "4"
 
-  orchestrator:
+  orchestrator-api:
     build:
       context: ./services/orchestrator
     depends_on:
       inference-service:
         condition: service_healthy
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
     environment:
       INFERENCE_ENDPOINT: http://inference-service:8000/infer
+      DATABASE_URL: postgresql+asyncpg://orchestrator:orchestrator@postgres:5432/orchestrator
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     
-    volumes:
-      - ./data:/app/data
+    ports:
+    - "3000:3000"
 
     command:
-      - "--queue"
-      - "data/queue.jsonl"
+      - uv
+      - run
+      - uvicorn
+      - orchestrator.api.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "3000"
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: orchestrator
+      POSTGRES_PASSWORD: orchestrator
+      POSTGRES_DB: orchestrator
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orchestrator -d orchestrator"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  persistence-consumer:
+    build:
+      context: ./services/orchestrator
+
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+
+    environment:
+      DATABASE_URL: postgresql+asyncpg://orchestrator:orchestrator@postgres:5432/orchestrator
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    command:
+      - python
+      - -m
+      - orchestrator.consumers.persistence_consumer
+  
+  migrate:
+    build:
+      context: ./services/orchestrator
+    command:
+      - uv
+      - run
+      - alembic
+      - upgrade
+      - head
+    environment:
+      DATABASE_URL: postgresql+psycopg://orchestrator:orchestrator@postgres:5432/orchestrator
+    depends_on:
+      postgres:
+        condition: service_healthy
   
 volumes:
   ollama-data:
-
-
+  postgres_data:
+                    

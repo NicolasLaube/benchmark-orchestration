@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import httpx
 import pytest
 from fastapi import FastAPI
@@ -8,6 +10,8 @@ from orchestrator.schedulers.fixed import (
     FixedConcurrencyScheduler,
     FixedConcurrencySchedulerConfig,
 )
+
+from .fake import FakeEventProducer
 
 
 def create_fake_app():
@@ -75,6 +79,7 @@ async def test_orchestrator_runs_questions_against_inference_service():
                 max_backoff_sec=1,
                 max_retries=0,
             ),
+            event_producer=FakeEventProducer(),
             grader=grader,
         )
 
@@ -92,7 +97,7 @@ async def test_orchestrator_runs_questions_against_inference_service():
                 expected_answer="Paris",
             ),
         ]
-        results = await scheduler.run_questions(questions)
+        results = await scheduler.run_questions(questions, run_id=uuid4())
 
     assert len(results) == 2
     assert results[0].correct

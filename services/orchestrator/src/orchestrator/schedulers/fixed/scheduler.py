@@ -8,7 +8,9 @@ manage concurrent requests while ensuring that the maximum concurrency limit is 
 
 import asyncio
 import logging
+from uuid import UUID
 
+from orchestrator.events.producer import RedisEventProducer
 from orchestrator.grader.substring import SubstringGrader
 from orchestrator.inference_client.client import InferenceClient
 from orchestrator.io.benchmark import BenchmarkQuestion
@@ -31,6 +33,7 @@ class FixedConcurrencyScheduler:
         self,
         inference_client: InferenceClient,
         grader: SubstringGrader,
+        event_producer: RedisEventProducer,
         config: FixedConcurrencySchedulerConfig | None = None,
         **runtime_kwargs,
     ) -> None:
@@ -39,8 +42,11 @@ class FixedConcurrencyScheduler:
         self.runtime = SchedulerRuntime(
             inference_client,
             grader,
+            event_producer=event_producer,
             **runtime_kwargs,
         )
+
+        self.event_producer = event_producer
 
     @property
     def metrics(self):
@@ -49,6 +55,7 @@ class FixedConcurrencyScheduler:
     async def run_questions(
         self,
         questions: list[BenchmarkQuestion],
+        run_id: UUID,
     ) -> list[QuestionResult]:
 
         # Start a new run in the runtime, initializing metrics and setting up the scheduler state.
@@ -86,6 +93,12 @@ class FixedConcurrencyScheduler:
                 result = await task
                 results.append(result)
                 await self.runtime.record_completion(result)
+
+                if result is not None:
+                    await self.runtime.publish_result(
+                        run_id=run_id,
+                        result=result,
+                    )
 
                 maybe_log_progress(
                     self.runtime,

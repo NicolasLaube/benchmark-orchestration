@@ -1,5 +1,6 @@
 import asyncio
 from typing import Annotated
+from uuid import uuid4
 
 import typer
 
@@ -54,9 +55,7 @@ def run_benchmark(
 
     report = asyncio.run(
         execute_benchmark(
-            config=config,
-            settings=settings,
-            questions=questions,
+            config=config, settings=settings, questions=questions, run_id=uuid4()
         )
     )
 
