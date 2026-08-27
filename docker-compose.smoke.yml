@@ -1,7 +1,9 @@
-services: 
+services:
+  redis:
+    image: redis:7
 
   fake-inference:
-    build: 
+    build:
       context: ./tests/docker/fake_inference
 
     healthcheck:
@@ -16,22 +18,26 @@ services:
       timeout: 2s
       retries: 10
 
-
-  orchestrator:
+  orchestrator-test:
     build:
       context: ./services/orchestrator
 
     environment:
       INFERENCE_ENDPOINT: http://fake-inference:8000/infer
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
 
     depends_on:
       fake-inference:
         condition: service_healthy
+      redis:
+        condition: service_started
 
     volumes:
       - ./data:/app/data
 
     command:
+      - "orchestrator"
       - "--queue"
       - "data/queue_smoke.jsonl"
       - "--scheduler"

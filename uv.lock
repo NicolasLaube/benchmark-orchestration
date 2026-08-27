@@ -174,22 +174,38 @@ name = "benchmark-orchestrator"
 version = "0.1.0"
 source = { editable = "services/orchestrator" }
 dependencies = [
+    { name = "alembic" },
     { name = "asyncio" },
+    { name = "asyncpg" },
+    { name = "fastapi" },
     { name = "httpx" },
+    { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "python-multipart" },
+    { name = "redis" },
     { name = "rich" },
+    { name = "sqlalchemy" },
     { name = "typer" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "alembic", specifier = ">=1.19.1" },
     { name = "asyncio", specifier = ">=4.0.0" },
+    { name = "asyncpg", specifier = ">=0.31.0" },
+    { name = "fastapi", specifier = ">=0.141.1" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
+    { name = "python-multipart", specifier = ">=0.0.32" },
+    { name = "redis", specifier = ">=8.1.0" },
     { name = "rich", specifier = ">=15.0.0" },
+    { name = "sqlalchemy", specifier = ">=2.0.52" },
     { name = "typer", specifier = ">=0.26.8" },
+    { name = "uvicorn", specifier = ">=0.52.1" },
 ]
 
 [[package]]

@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 
 from orchestrator.schedulers.aimd.config import AdaptiveAimdSchedulerConfig
@@ -16,7 +17,9 @@ class RunConfig(BaseModel):
 
 
 class Settings(BaseSettings):
-    inference_endpoint: str = "http://localhost:8000/infer"
+    inference_endpoint: str = os.getenv(
+        "INFERENCE_ENDPOINT", "http://localhost:8000/infer"
+    )
 
     inference_timeout_seconds: float = Field(
         default=120.0,

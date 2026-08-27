@@ -24,7 +24,7 @@ from orchestrator.schedulers.fixed.config import FixedConcurrencySchedulerConfig
 runs_router = APIRouter(prefix="/runs")
 
 
-@runs_router.post("/", tags=["runs"])
+@runs_router.post("", tags=["runs"])
 async def create_run(
     file: Annotated[
         UploadFile,
