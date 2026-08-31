@@ -1,4 +1,4 @@
-from orchestrator.events.events import QuestionCompleted
+from orchestrator.domain.events import QuestionCompleted
 
 
 class FakeEventProducer:

@@ -1,768 +1,310 @@
 # Benchmark Orchestrator
 
-An end-to-end system for pushing benchmark workloads through a capacity-constrained local inference endpoint as quickly, reliably, and observably as possible.
+A distributed benchmark execution platform for running large evaluation workloads against capacity-constrained inference endpoints, adapting to backpressure, tracking execution state, and exposing results through a web interface.
 
-The project contains two independent processes:
+The project started as a CLI benchmark runner and evolved into a service-oriented system with persistent runs, asynchronous execution, event streaming, and a dedicated frontend.
 
-1. **Inference service** — a FastAPI wrapper around a local Ollama model that enforces configurable RPM and in-flight concurrency limits.
-2. **Benchmark orchestrator** — an adaptive runner that loads benchmark jobs, dispatches requests, reacts to `429` backpressure, retries safely, grades responses, displays live execution state, and writes a structured report.
+The central problem is simple:
 
-The orchestrator does **not** read the configured limits from the service. It discovers usable capacity from runtime feedback.
+> How can a client drive an inference endpoint close to its usable capacity without knowing its limits in advance, while remaining reliable and observable under rate limits, concurrency limits, retries, and failures?
 
-## Key result
+The orchestrator answers that by combining adaptive scheduling, explicit backpressure handling, persistent state, event-driven progress updates, and benchmark reporting.
 
-In a controlled local benchmark of 1,000 requests against the same 60 RPM endpoint, both schedulers achieved essentially the same throughput. The adaptive scheduler, however, reached that throughput with far less backpressure and more reliable completion.
+## What the system does
 
-| Metric               | Fixed concurrency |          Adaptive scheduler |
-| -------------------- | ----------------: | --------------------------: |
-| Total wall time      |             16:37 |                       16:45 |
-| Throughput           |      60.2 req/min |                59.7 req/min |
-| Concurrency control  |        Fixed at 4 | Adaptive, learned limit ≈ 4 |
-| Rate-limit responses |               154 |                       **3** |
-| Retries              |               153 |                       **3** |
-| Final failures       |                 1 |                       **0** |
+A user creates a benchmark run from the web application. The orchestrator persists the run, executes questions asynchronously against the inference service, adapts request pressure based on runtime feedback, records per-question outcomes, publishes progress events, and produces a structured report.
 
-
-The adaptive scheduler therefore maintained near-identical throughput while reducing rate-limit responses and retries by approximately **98%**, and completed the full workload without final failures.
-
-Both runs used the same workload, model, machine, and service limits:
-60 RPM and a maximum in-flight concurrency of 4.
-
-
----
-
-## Quickstart
-
-### 1. Install dependencies
-
-```bash
-uv sync
-```
-
-### 2. Start the inference service
-
-```bash
-make serve
-```
-
-`make serve` starts Ollama if necessary and pulls the configured model if it is not already available. 
-
-Equivalent command:
-
-```bash
-ollama serve
-
-uv run inference-service \
-  --model qwen2.5:0.5b \
-  --rpm 60 \
-  --max-concurrency 4 \
-  --port 8000
-```
-
-### 3. Run the benchmark orchestrator
-
-In another terminal:
-
-```bash
-make benchmark
-```
-
-Equivalent command:
-
-```bash
-uv run orchestrator \
-		--queue "$(QUEUE)" \
-		--endpoint "$(INFERENCE_ENDPOINT)" \
-		--out "$(OUT)" \
-		--timeout-sec "$(TIMEOUT_SEC)" \
-		--max-retries "$(MAX_RETRIES)" \
-		--scheduler "$(SCHEDULER)" \
-		--max-concurrency "$(MAX_CONCURRENCY)" \
-		--max-target-concurrency "$(MAX_TARGET_CONCURRENCY)" \
-		--log-level "$(LOG_LEVEL)" \
-		$(ORCHESTRATOR_ARGS)
-```
-
-The repository includes a sample `benchmark.csv` and `queue.jsonl`.
-
----
+The inference service intentionally behaves like a constrained production API: it enforces request-per-minute and in-flight concurrency limits and rejects excess traffic instead of silently queueing it.
 
 ## Architecture
 
+The diagram below represents the target architecture of the project. Components marked as planned are part of the intended production-style architecture but may still be under implementation.
+
 ```mermaid
 flowchart LR
-    Q[queue.jsonl<br/>Benchmark runs]
-    B[benchmark.csv<br/>Questions + expected answers]
+    U[User / Browser]
 
-    subgraph O[Benchmark Orchestrator]
-        QL[Queue loader]
-        BL[Benchmark loader]
-        S[Adaptive scheduler<br/>AIMD + Retry-After]
-        C[HTTP client]
-        G[Grader<br/>substring match]
-        M[Run metrics]
-        R[JSON reporter]
+    subgraph EDGE[Edge]
+        NGINX[Nginx<br/>reverse proxy]
     end
 
-    subgraph IS[Rate-limited Inference Service]
-        API[FastAPI<br/>POST /infer]
-        CL[Concurrency limiter]
-        RL[RPM limiter]
-        OC[Ollama client]
+    subgraph APP[Application]
+        FE[React frontend]
+        API[Orchestrator API<br/>FastAPI]
+        WORKER[Benchmark execution<br/>scheduler + workers]
+        AUTH[Authentication<br/>planned]
     end
 
-    OM[Ollama<br/>qwen2.5:0.5b]
-    LIVE[Rich live view]
-    OUT[results.json]
+    subgraph DATA[State & messaging]
+        PG[(PostgreSQL<br/>durable state)]
+        REDIS[(Redis Streams<br/>run events)]
+    end
 
-    Q --> QL
-    B --> BL
-    QL --> BL
-    BL --> S
-    S --> C
-    C -->|HTTP POST /infer| API
+    subgraph INFERENCE[Inference]
+        INF[Inference service<br/>FastAPI]
+        OLLAMA[Ollama<br/>local LLM]
+    end
 
-    API --> CL
-    CL --> RL
-    RL --> OC
-    OC -->|POST /api/generate| OM
-    OM --> OC
-    OC --> API
+    subgraph OBS[Observability]
+        PROM[Prometheus<br/>planned]
+        GRAF[Grafana<br/>planned]
+    end
 
-    API -->|200 answer| C
-    API -->|429 + Retry-After| C
+    U -->|HTTP| NGINX
+    NGINX --> FE
+    NGINX --> API
 
-    C --> S
-    S --> G
-    G --> M
-    M --> LIVE
-    M --> R
-    R --> OUT
+    AUTH -. protects .-> API
+
+    API -->|create/read runs| PG
+    API -->|start run| WORKER
+    WORKER -->|persist results| PG
+    WORKER -->|publish progress| REDIS
+    API -->|consume events / SSE| REDIS
+    API -->|SSE| NGINX
+    NGINX -->|SSE| U
+
+    WORKER -->|POST /infer| INF
+    INF --> OLLAMA
+
+    API -. /metrics .-> PROM
+    WORKER -. /metrics .-> PROM
+    INF -. /metrics .-> PROM
+    REDIS -. exporter .-> PROM
+    PG -. exporter .-> PROM
+    PROM -. datasource .-> GRAF
 ```
 
-The inference service intentionally behaves like a constrained production endpoint. It never queues excess work internally: a request is either admitted immediately or rejected with explicit backpressure.
-
-The orchestrator owns the workload queue and decides when to launch requests, how many to keep active, how to react to `429` responses, when to retry, and how to adapt sending pressure over time.
-
----
-
-## Input format
-
-### `benchmark.csv`
-
-```csv
-id,question,expected_answer
-1,What is the capital of France?,Paris
-2,What is 12 times 8?,96
-```
-
-### `queue.jsonl`
-
-```json
-{"benchmark_id": "run_001", "csv_path": "data/benchmark.csv"}
-{"benchmark_id": "run_002", "csv_path": "data/benchmark.csv"}
-```
-
-The sample workload references the same 100-question benchmark multiple times to produce 1,000 total queries.
-
----
-
-## Inference service
-
-### Functional requirements
-
-The inference service must:
-
-- expose `GET /health` and `POST /infer`;
-- run inference through a local Ollama model;
-- enforce a configurable rolling RPM limit;
-- enforce a configurable maximum number of concurrent in-flight requests;
-- reject excess traffic immediately with HTTP `429`;
-- include a `Retry-After` header on rate-limit responses;
-- never silently drop requests;
-- never queue requests internally;
-- release concurrency capacity on success, timeout, or downstream failure.
-
-### Non-functional requirements
-
-The inference service should:
-
-- remain correct when several asynchronous requests arrive concurrently;
-- use deterministic, race-safe admission logic;
-- use a monotonic clock for all rate-limit timing;
-- provide a strict rolling-window RPM guarantee;
-- optionally expose structured rate-limit reasons for observability;
-- keep admission control simple enough to inspect and test;
-- behave consistently when Ollama is slow or unavailable.
-
-### Contract
-
-The service exposes:
-
-- `GET /health` — lightweight health information;
-- `POST /infer` — model inference.
-
-A request is accepted only when both admission checks pass:
-
-1. the rolling RPM limit;
-2. the maximum number of concurrent in-flight requests.
-
-If either limit is reached, the service immediately returns:
-
-```http
-429 Too Many Requests
-Retry-After: <seconds>
-```
-
-No request is silently dropped and no internal queue is used.
-
-The concurrency slot is held for the full downstream Ollama call and released in a `finally` block, including when Ollama fails or times out.
-
-### Request flow
+### Request lifecycle
 
 ```mermaid
 sequenceDiagram
-    participant O as Orchestrator
-    participant S as Inference Service
-    participant M as Ollama
+    participant UI as React UI
+    participant API as Orchestrator API
+    participant DB as PostgreSQL
+    participant W as Scheduler
+    participant R as Redis Streams
+    participant I as Inference service
 
-    O->>S: POST /infer
+    UI->>API: POST /runs
+    API->>DB: persist queued run
+    API-->>UI: run_id
 
-    alt capacity available
-        S->>M: POST /api/generate
-        M-->>S: model response
-        S-->>O: 200 + answer
-        O->>O: record latency
-        O->>O: grade answer
-        O->>O: update controller state
-    else RPM or concurrency limit reached
-        S-->>O: 429 + Retry-After
-        O->>O: record backpressure signal
-        O->>O: adapt sending pressure
-        O->>O: schedule retry
+    API->>W: start benchmark
+    W->>DB: mark running
+
+    loop benchmark questions
+        W->>I: POST /infer
+        alt accepted
+            I-->>W: 200 + answer
+            W->>DB: persist result
+            W->>R: question_completed
+        else capacity exceeded
+            I-->>W: 429/503 + backpressure signal
+            W->>W: adapt + retry later
+        end
     end
+
+    W->>DB: mark finished
+    W->>R: run_completed
+    API->>R: consume events
+    API-->>UI: Server-Sent Events
+    UI->>API: GET /runs/{id}/report
+    API->>DB: load report
+    API-->>UI: benchmark report
 ```
 
-### RPM limiter
+## Services
 
-The default implementation uses an exact rolling 60-second window.
+| Component | Responsibility | Documentation |
+|---|---|---|
+| Orchestrator | Run lifecycle, scheduling, retries, persistence, events, reports | [`services/orchestrator/README.md`](services/orchestrator/README.md) |
+| Inference service | Controlled LLM endpoint with explicit RPM and concurrency limits | [`services/inference_service/README.md`](services/inference_service/README.md) |
+| Frontend | Run creation, live progress and benchmark reports | [`services/frontend/README.md`](services/frontend/README.md) |
 
-For every accepted request, the limiter stores a monotonic timestamp. Before evaluating a new request, it removes timestamps outside the active window. A new request is accepted only when fewer than `rpm` timestamps remain.
+## Core design choices
 
-Properties:
+### PostgreSQL for durable application state
 
-- strict rolling-window enforcement;
-- meaningful `Retry-After` calculation from the oldest active request;
-- `O(rpm)` memory;
-- amortized `O(1)` admission work;
-- monotonic time, so wall-clock adjustments cannot affect admission decisions.
+PostgreSQL is the source of truth for state that must survive process restarts: runs, their status, question results, timestamps, and generated reports.
 
+It is deliberately not replaced by Redis. Benchmark results are durable business data and benefit from relational constraints, transactions, queryability, migrations, and predictable persistence semantics.
 
-### Concurrency limiter
+### Redis Streams for event delivery
 
-The concurrency limiter uses a lock-protected in-flight counter.
+Redis Streams are used for transient execution events such as `question_completed` and `run_completed`.
 
-The check-and-increment operation is atomic:
+They solve a different problem from PostgreSQL: they allow producers and consumers to communicate asynchronously without making the database the transport layer for every progress update.
 
-```text
-if in_flight >= limit:
-    reject immediately
-else:
-    increment and admit
-```
+Streams are a good fit here because they provide:
 
-A semaphore is intentionally not used for waiting, because waiting would create an internal service queue, which the assignment explicitly forbids.
+- ordered event logs per stream;
+- consumer-friendly incremental reads;
+- persistence beyond a simple pub/sub message;
+- low operational overhead for a project of this scale;
+- a natural path toward consumer groups if execution becomes distributed.
 
-### Process scope
+PostgreSQL remains the durable source of truth. Redis events are used to propagate changes, not to redefine ownership of application state.
 
-Rate-limit and concurrency state are stored in memory, so the service intentionally runs with a single Uvicorn worker.
+### Server-Sent Events for live progress
 
-A multi-instance production deployment would require coordinated admission control, for example through a shared Redis-backed limiter or an API gateway. That was left outside the take-home scope.
+The browser receives run progress through SSE rather than WebSockets.
 
+The communication pattern is primarily server-to-client: once a run has been created, the frontend needs a stream of progress updates but does not need a bidirectional socket protocol. SSE therefore keeps the transport simpler while providing automatic browser reconnection semantics and working naturally over HTTP.
 
-### Multi-client behavior
+### Nginx as the edge layer
 
-Rate limits are enforced globally by the inference service. If multiple orchestrators run against the same service, they therefore share the same RPM and concurrency budget.
+Nginx provides a single entry point in front of the frontend and API.
 
-The current adaptive controller only observes its own traffic, so external load can cause it to underestimate the available capacity. The service protects its global capacity, but does not guarantee fair sharing between clients.
+Its role is intentionally infrastructural rather than application-specific:
 
+- route `/api/*` traffic to FastAPI;
+- serve or proxy the frontend;
+- terminate TLS in a deployed environment;
+- centralize headers and request limits;
+- proxy long-lived SSE connections correctly;
+- avoid exposing each internal service directly to clients.
 
----
+This also means authentication, TLS and routing can evolve without coupling those concerns to the React application or benchmark scheduler.
 
-## Benchmark orchestrator
+### Separate inference service
 
-### Functional requirements
+The inference service is isolated from the orchestrator because it represents the system under load rather than the load generator itself.
 
-The orchestrator must:
+It owns admission control and model access. The orchestrator owns scheduling and adaptation. Keeping those responsibilities separate makes it possible to test scheduling behavior against a clear external contract and later replace the local service with a remote inference provider.
 
-- load benchmark jobs from a JSONL queue;
-- load question-answer pairs from CSV benchmark files;
-- dispatch all questions to the inference service;
-- handle HTTP `429` responses and respect `Retry-After`;
-- retry transient failures within a bounded retry budget;
-- adapt to endpoint capacity without reading configured service limits;
-- preserve logical questions when HTTP attempts are retried;
-- grade model responses;
-- expose live execution progress;
-- produce a structured results report.
+### Adaptive scheduling
 
-### Non-functional requirements
+The orchestrator does not read the inference service's configured limits. It learns usable capacity from observed responses.
 
-The orchestrator should:
+The adaptive scheduler controls two related but distinct dimensions:
 
-- maximize throughput without overwhelming the inference service;
-- react quickly when service capacity changes;
-- avoid silent request loss;
-- keep retry and backpressure behavior observable;
-- distinguish logical questions from HTTP attempts;
-- keep metrics internally consistent through a single source of truth;
-- remain usable through a simple CLI;
-- avoid hard-coded assumptions about RPM or concurrency limits;
-- remain extensible enough to add new scheduler strategies or benchmark job types.
+- **target concurrency** — how many requests may be active simultaneously;
+- **launch pacing** — how quickly new attempts are started.
 
-The orchestrator consumes the logical workload and turns each question into one or more HTTP attempts.
+This distinction matters because an RPM limit and a concurrency limit are different bottlenecks. Increasing concurrency cannot solve an RPM bottleneck, and slowing request launches does not necessarily solve saturation caused by long-running concurrent requests.
 
-A useful distinction is:
+## Authentication
 
-```text
-logical questions != HTTP attempts
-```
+Authentication is the next application-level concern planned for the platform.
 
-For example:
+The intended boundary is the orchestrator API, behind Nginx. The browser authenticates once and sends credentials with API requests; run ownership and authorization checks remain server-side.
 
-```text
-1000 completed questions
-1003 HTTP attempts
-3 retries
-```
+A production-oriented version should support:
 
-This distinction is tracked explicitly in the run metrics.
+- authenticated API access;
+- ownership of benchmark runs;
+- authorization on run, event and report endpoints;
+- secure password or external identity-provider flows;
+- short-lived access credentials and appropriate refresh/session handling;
+- no authentication logic inside the scheduler or inference domain code.
 
-### Baseline: fixed concurrency
-
-A fixed-concurrency scheduler is kept as a simple baseline.
-
-It runs with a configured maximum concurrency, retries transient failures, respects `Retry-After`, and applies bounded exponential backoff to non-rate-limit failures.
-
-This version is simple and predictable, but requires the operator to choose a concurrency value in advance.
-
-### Adaptive scheduler
-
-The main scheduler does not assume the service capacity upfront.
-
-It adapts two independent controls:
-
-- **target concurrency** — the desired upper bound on active request attempts;
-- **launch interval** — the minimum delay between starting two HTTP requests.
-
-Successful requests indicate available capacity. `429` responses indicate that one of the service boundaries has been crossed.
-
-When the service exposes a structured reason:
-
-- `rpm_limited` → adapt launch pacing;
-- `concurrency_limited` → adapt target concurrency.
-
-When reasons are hidden, the same `429 + Retry-After` contract still works, but the scheduler falls back to conservative heuristics.
-
-### Adaptive control loop
-
-```mermaid
-flowchart TD
-    A[Start conservatively<br/>low concurrency + paced launches]
-    B[Launch request]
-    C{Response}
-
-    D[Success]
-    E{Control phase}
-    F[Probe phase<br/>decrease launch interval]
-    G[Adaptive phase<br/>increase concurrency gradually<br/>when allowed]
-
-    H{Rate-limit signal}
-    I[Structured RPM limit]
-    J[Structured concurrency limit]
-    K[Opaque / unknown limit]
-
-    L[Estimate RPM ceiling<br/>slow launch pacing]
-    M[Estimate concurrency ceiling<br/>reduce target concurrency]
-    N[Conservative backoff<br/>reduce concurrency and launch rate]
-
-    O[Respect Retry-After<br/>schedule retry]
-    P{Work remaining?}
-    Q[Finish]
-
-    A --> B
-    B --> C
-
-    C -->|200| D
-    C -->|429| H
-
-    D --> E
-    E -->|Initial probing| F
-    E -->|Adaptive control| G
-
-    F --> P
-    G --> P
-
-    H -->|rpm_limited| I
-    H -->|concurrency_limited| J
-    H -->|reason unavailable| K
-
-    I --> L
-    J --> M
-    K --> N
-
-    L --> O
-    M --> O
-    N --> O
-
-    O --> P
-
-    P -->|Yes| B
-    P -->|No| Q
-```
-
-The scheduler controls two independent dimensions:
-
-* **launch pacing** — how quickly new HTTP requests are started;
-* **target concurrency** — the maximum number of request attempts allowed to be active.
-
-During the initial probe phase, successful requests progressively reduce the launch interval. Once adaptive control begins, sustained success can increase target concurrency. Explicit RPM and concurrency signals update the corresponding estimated capacity ceiling, while opaque rate-limit responses trigger a conservative backoff across both dimensions.
-
-
----
+The exact authentication provider and token/session strategy should remain replaceable behind an application-level identity abstraction.
 
 ## Observability
 
-The CLI uses two complementary observability layers.
+The project currently exposes execution state through application events and the frontend. The target observability stack adds Prometheus and Grafana.
 
-### Live terminal view
+Prometheus should collect operational metrics such as:
 
-Rich continuously displays:
+- HTTP request count and latency;
+- benchmark throughput;
+- p50/p95/p99 inference latency;
+- active and target concurrency;
+- retry counts;
+- `429` and `503` rates;
+- Redis stream lag;
+- database connection-pool usage;
+- run failure rate.
 
-- completed logical questions;
-- HTTP attempts;
-- overall and recent throughput;
-- average, p50, and p95 latency;
-- target concurrency;
-- current and peak HTTP in-flight requests;
-- launch RPM and launch interval;
-- estimated RPM and concurrency ceilings;
-- retries;
-- `429` counts by type;
-- accuracy;
-- ETA.
+Grafana then provides dashboards for both service health and scheduler behavior. This is intentionally separate from benchmark reports: a report describes one benchmark run, whereas Prometheus/Grafana describe the health and behavior of the running platform.
 
-### Event logs
+## Benchmark result
 
-The live view owns continuous progress. Logs are reserved for state transitions and exceptional events.
+An earlier controlled local experiment compared fixed and adaptive scheduling against the same inference endpoint configured for 60 RPM and a maximum concurrency of 4.
 
-| Event | Level |
-|---|---|
-| `RUN_STARTED` | `INFO` |
-| `CONTROL_UPDATE` | `INFO` |
-| `BACKPRESSURE_PAUSE` | `INFO` |
-| `RATE_LIMIT` | `WARNING` |
-| `HTTP_DISPATCH` | `DEBUG` |
-| `RETRY_SCHEDULED` | `DEBUG` |
-| `REQUEST_FAILED` | `ERROR` |
-| `RUN_FINISHED` | `INFO` |
+| Metric | Fixed concurrency | Adaptive scheduler |
+|---|---:|---:|
+| Total wall time | 16:37 | 16:45 |
+| Throughput | 60.2 req/min | 59.7 req/min |
+| Concurrency control | Fixed at 4 | Learned ≈ 4 |
+| Rate-limit responses | 154 | **3** |
+| Retries | 153 | **3** |
+| Final failures | 1 | **0** |
 
-Both Rich and the Python logger share the same console so event logs remain readable while the live view is active.
+The adaptive scheduler maintained essentially identical throughput while reducing rate-limit responses and retries by about 98%.
 
-### Single source of truth
+A later 1,000-question run against a 120 RPM / concurrency-8 service completed all questions with 3 retries and sustained approximately 115 requests/minute over the complete wall-clock duration.
+
+## Repository layout
 
 ```text
-                    ┌─────────────────┐
-                    │   RunMetrics    │
-                    │ single source   │
-                    │    of truth     │
-                    └────────┬────────┘
-                             │
-                ┌────────────┼─────────────┐
-                │            │             │
-                ▼            ▼             ▼
-           Scheduler    Rich dashboard   Final report
+.
+├── README.md
+├── docker-compose.yml
+├── services/
+│   ├── orchestrator/
+│   │   └── README.md
+│   ├── inference_service/
+│   │   └── README.md
+│   └── frontend/
+│       └── README.md
+└── ...
 ```
 
-The scheduler, terminal view, and final report all read from the same metrics object. This avoids duplicated counters drifting apart.
+The exact internal package structure is documented by each service rather than duplicated here.
 
-In production, the same stable events could be emitted as structured JSON logs, for example through `structlog`, and sent to an observability backend.
+## Local development
 
----
+The preferred development workflow is Docker Compose for infrastructure and service integration, while individual services can still be run directly during focused development.
 
-## Example run
-
-One local run used:
-
-```text
-Service RPM limit:          120
-Service concurrency limit:    8
-Questions:                  1000
-```
-
-Observed summary:
-
-```text
-Total wall time              08:40
-Completed                1000 / 1000
-Failures                          0
-HTTP attempts                   1003
-Retries                            3
-Throughput                115.4 req/min
-Average latency                1235 ms
-p50 latency                     440 ms
-p95 latency                    4119 ms
-Estimated RPM ceiling             120
-Estimated concurrency ceiling       8
-Rate limits          3 (RPM 2, concurrency 1)
-Peak HTTP in-flight                9
-```
-
-The run sustained roughly 96% of the observed RPM ceiling over the full wall-clock duration, including initial probing and backpressure pauses.
-
----
-
-## Output
-
-The orchestrator writes a structured JSON results file containing at least:
-
-- total wall time;
-- per-benchmark wall time;
-- total requests;
-- failure count;
-- retry count;
-- HTTP `429` count;
-- throughput;
-- p50 and p95 request latency;
-- overall accuracy.
-
-Example:
-
-```json
-{
-  "generated_at": "2026-07-13T14:07:09.890829+00:00",
-  "summary": {
-    "total_wall_time_sec": 997.308,
-    "total_requests": 1000,
-    "successful_requests": 999,
-    "failure_count": 1,
-    "accuracy": 0.5816,
-    "latency_ms": {
-      "p50": 422,
-      "p95": 2122.0,
-      "min": 188,
-      "max": 4762
-    },
-    "throughput_req_s": 1.003,
-    "benchmarks": [
-      {
-        "benchmark_id": "run_001",
-        "total_requests": 100,
-        "successful_requests": 100,
-        "failure_count": 0,
-        "accuracy": 0.58,
-        "latency_ms": {
-          "p50": 372.5,
-          "p95": 2097.0
-        }
-      }
-    ]
-  },
-  "results": [
-    {
-      "benchmark_id": "run_001",
-      "question_id": "7",
-      "question": "Days in a week?",
-      "expected_answer": "7",
-      "answer": "14",
-      "correct": false,
-      "score": 0.0,
-      "latency_ms": 326,
-      "attempts": 1,
-      "status": "success",
-      "error": null
-    },
-  ],
-}
-
-
-```
-
----
-
-## Grading
-
-Answer grading is intentionally simple.
-
-A response is marked correct when the expected answer appears as a case-insensitive substring of the model output.
-
-This keeps the focus on orchestration, backpressure, and reliability rather than NLP evaluation quality.
-
----
-
-## Tradeoffs
-
-This implementation favors a working, observable end-to-end system over a heavier distributed architecture.
-
-Current tradeoffs:
-
-- in-memory queue;
-- no persistent checkpoint/resume mechanism;
-- simple substring-based grading;
-- no distributed workers;
-- no authentication;
-- no Prometheus/Grafana integration;
-- single-process rate-limit state;
-- Docker is not the default execution path, to keep local Ollama setup simple.
-
----
-
-## Implementation choices
-
-* **Explicit backpressure:** the inference service does not queue requests internally. Capacity violations are surfaced explicitly through `429` and `503` responses, allowing the orchestrator to adapt.
-* **Separate rate and concurrency control:** launch rate and in-flight concurrency are adjusted independently because RPM saturation and concurrency saturation are different bottlenecks.
-* **Jittered retries:** retry delays include jitter to avoid multiple failed requests retrying at the same instant and creating another synchronized burst.
-* **Monotonic timing:** rate limiting and latency measurements rely on monotonic time so they are not affected by system clock adjustments.
-* **Sliding-window RPM limiting:** I chose a sliding-window limiter because the requirement is expressed as a strict number of accepted requests over a rolling 60-second period. It directly enforces that constraint without introducing an internal queue or traffic-smoothing behavior.
-
-
-## Observed behavior
-
-* The active bottleneck depends on the configured RPM limit, maximum concurrency, and request latency.
-* Increasing concurrency improves throughput only until another capacity limit is reached. Beyond that point, additional concurrency mainly increases contention and retries.
-* The adaptive controller converges close to the available capacity while keeping a small safety margin below hard limits.
-* Multiple orchestrators share the same global service capacity, but the current implementation does not guarantee fair capacity allocation between clients.
-
----
-
-## What I would build next
-
-With more time, I would add:
-
-* checkpointing and resume for long benchmark runs;
-* priority queues for mixed workloads;
-* richer benchmark job types;
-* Prometheus metrics and structured JSON logs;
-* distributed workers with shared state;
-* more advanced adaptive control for opaque `429` signals and external competing traffic;
-* evaluation against dynamically changing capacity limits to test how well the controller tracks varying RPM and concurrency constraints;
-* client-aware rate limiting or shared coordination for fairer capacity allocation across multiple orchestrators;
-* reproducible load-test scenarios;
-* optional Docker Compose support.
-
----
-
-## AI usage
-
-AI tooling was used to accelerate boilerplate generation, review edge cases, compare alternative rate-control strategies, and improve documentation.
-
-The system design, tradeoff decisions, controller behavior, load-testing results, and final implementation were manually reviewed and tested end to end.
-
-
-## Running with Docker Compose
-
-The project can be run locally using Docker Compose. The stack contains:
-
-* **Ollama** — serves the language model.
-* **Ollama init** — ensures the requested model is downloaded before the inference service starts.
-* **Inference service** — exposes the model through the benchmark API.
-* **Orchestrator** — loads a benchmark queue and sends requests to the inference service.
-
-### Start the stack
-
-From the repository root:
+Typical full-stack startup:
 
 ```bash
 docker compose up --build
 ```
 
-Docker Compose will start the services in dependency order:
+The concrete ports, environment variables and service-specific commands are documented in the corresponding service README files.
 
-```text
-Ollama
-  ↓ healthy
-Ollama init
-  ↓ model downloaded
-Inference service
-  ↓ healthy
-Orchestrator
-```
+## Current status
 
-The default model is:
+The project is intentionally evolving from a take-home-style benchmark runner toward a production-inspired service architecture.
 
-```text
-qwen2.5:0.5b
-```
+Implemented or already represented in the codebase:
 
-A different Ollama model can be selected using the `MODEL_NAME` environment variable:
+- fixed and adaptive schedulers;
+- explicit handling of inference backpressure;
+- FastAPI orchestrator API;
+- asynchronous benchmark execution;
+- PostgreSQL persistence;
+- Redis-backed execution events;
+- SSE progress updates;
+- React frontend;
+- persisted benchmark reports;
+- Docker-based local environment.
 
-```bash
-MODEL_NAME=llama3.2 docker compose up --build
-```
+Planned / being integrated:
 
-The downloaded model weights are persisted in the `ollama-data` Docker volume, so they do not need to be downloaded again every time the containers are recreated.
+- authentication and authorization;
+- Nginx edge routing for the complete stack;
+- Prometheus metrics;
+- Grafana dashboards;
+- stronger worker isolation and recovery semantics;
+- distributed execution if required by scale.
 
-### Run the orchestrator manually
+## Engineering principles
 
-For benchmark runs, the orchestrator can be executed separately with:
+The implementation follows a few deliberate rules:
 
-```bash
-docker compose run --rm orchestrator \
-  --queue data/queue.jsonl
-```
+1. **Explicit backpressure over hidden queues.** Capacity violations should be observable and actionable.
+2. **Durable state and transport are separate concerns.** PostgreSQL stores truth; Redis distributes events.
+3. **Logical questions are not HTTP attempts.** Retries must not corrupt benchmark-level metrics.
+4. **Infrastructure concerns stay at the edges.** Nginx, authentication and telemetry should not leak into scheduling logic.
+5. **Simple protocols first.** HTTP and SSE are used where they solve the problem without unnecessary coordination complexity.
+6. **Measure before distributing.** The architecture can evolve toward more workers, but only where scale or reliability actually requires it.
 
-The queue directory is mounted into the orchestrator container, so files placed in the local `data/` directory are available inside the container under `/app/data`.
+## Further documentation
 
-For example:
-
-```bash
-docker compose run --rm orchestrator \
-  --queue data/queue_test.jsonl
-```
-
-Additional orchestrator CLI options can be passed in the same way:
-
-```bash
-docker compose run --rm orchestrator \
-  --queue data/queue.jsonl \
-  --scheduler fixed \
-  --max-concurrency 4
-```
-
-To display all available options:
-
-```bash
-docker compose run --rm orchestrator --help
-```
-
-The orchestrator communicates with the inference service through Docker's internal network using:
-
-```text
-http://inference-service:8000
-```
-
-The inference service similarly communicates with Ollama through:
-
-```text
-http://ollama:11434
-```
-
-These internal ports do not need to be published to the host machine for communication between Docker Compose services.
-
-### Stop the stack
-
-Stop and remove the containers and Compose network with:
-
-```bash
-docker compose down
-```
-
-The `ollama-data` volume is preserved by default.
-
-To also delete the persisted Ollama model data:
-
-```bash
-docker compose down -v
-```
-
-Use the latter command with care, since the models will need to be downloaded again on the next startup.
+- [Orchestrator](services/orchestrator/README.md)
+- [Inference service](services/inference_service/README.md)
+- [Frontend](services/frontend/README.md)

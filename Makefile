@@ -175,3 +175,17 @@ clean:
 		"$(RESULTS_DIR)"/*.json \
 		"$(RESULTS_DIR)"/*.jsonl \
 		"$(RESULTS_DIR)"/*.csv
+
+
+FRONTEND_DIR=services/frontend
+NVM_DIR=$(HOME)/.nvm
+NVM_SH=$(shell brew --prefix nvm)/nvm.sh
+
+.PHONY: frontend
+
+frontend:
+	@export NVM_DIR="$(NVM_DIR)"; \
+	. "$(NVM_SH)"; \
+	nvm use 24 >/dev/null; \
+	cd "$(FRONTEND_DIR)"; \
+	npm run dev -- --port 5173

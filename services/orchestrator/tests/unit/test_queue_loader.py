@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from orchestrator.io.queue import LoaderJsonlQueue
+from orchestrator.infrastructure.io.queue import LoaderJsonlQueue
 
 
 def test_queue_loader_reads_jsonl(tmp_path: Path) -> None:

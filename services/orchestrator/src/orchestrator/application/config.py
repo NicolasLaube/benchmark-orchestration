@@ -1,8 +1,8 @@
 import os
 from enum import Enum
 
-from orchestrator.schedulers.aimd.config import AdaptiveAimdSchedulerConfig
-from orchestrator.schedulers.fixed.config import FixedConcurrencySchedulerConfig
+from orchestrator.domain.scheduling.aimd.config import AdaptiveAimdSchedulerConfig
+from orchestrator.domain.scheduling.fixed.config import FixedConcurrencySchedulerConfig
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

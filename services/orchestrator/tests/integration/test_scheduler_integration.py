@@ -3,13 +3,13 @@ from uuid import uuid4
 import httpx
 import pytest
 from fastapi import FastAPI
-from orchestrator.grader.substring import SubstringGrader
-from orchestrator.inference_client.client import InferenceClient
-from orchestrator.io.models import BenchmarkQuestion
-from orchestrator.schedulers.fixed import (
+from orchestrator.domain.grading.substring import SubstringGrader
+from orchestrator.domain.models.question import BenchmarkQuestion
+from orchestrator.domain.scheduling.fixed import (
     FixedConcurrencyScheduler,
     FixedConcurrencySchedulerConfig,
 )
+from orchestrator.infrastructure.inference_client.client import InferenceClient
 
 from .fake import FakeEventProducer
 
