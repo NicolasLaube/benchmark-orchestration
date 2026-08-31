@@ -85,6 +85,7 @@ jobs:
       - name: Run smoke benchmark
         run: |
           docker compose -f docker-compose.smoke.yml run --rm orchestrator-test \
+            orchestrator \
             --queue data/queue_smoke.jsonl \
             --scheduler fixed \
             --max-concurrency 2 \
