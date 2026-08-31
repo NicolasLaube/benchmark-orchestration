@@ -76,7 +76,7 @@ services:
       - uv
       - run
       - uvicorn
-      - orchestrator.api.app:app
+      - orchestrator.interfaces.api.app:app
       - --host
       - 0.0.0.0
       - --port
@@ -121,7 +121,7 @@ services:
     command:
       - python
       - -m
-      - orchestrator.consumers.persistence_consumer
+      - orchestrator.infrastructure.messaging.redis.persistence_consumer
   
   migrate:
     build:

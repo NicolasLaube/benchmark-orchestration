@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import type { Run } from "../types/run"
 import { getRun } from "../api/runs";
 import { RunProgress } from "../components/RunProgress";
 import { RunHeader } from "../components/RunHeader";
 
 type RunEvent = {
+    type: string,
     run_id: string
     status: Run["status"]
     completed: number
@@ -57,9 +58,16 @@ export function RunPage() {
             const data: RunEvent = JSON.parse(event.data)
 
             setRun((currentRun) => {
-
                 if (!currentRun) {
                     return currentRun
+                }
+
+                if (data.type === "run_completed") {
+                    return {
+                        ...currentRun,
+                        status: "finished",
+                        completed: currentRun.total,
+                    }
                 }
 
                 return {
@@ -98,6 +106,16 @@ export function RunPage() {
                 <div className="mt-6">
                     <RunProgress run={run} />
                 </div>
+
+                {run.status === "finished" && (
+                    <div className="mt-6">
+                        <Link
+                            to={`/runs/${runId}/report`}
+                        >
+                            View report
+                        </Link>
+                    </div>
+                )}
             </main>
         </div>
     )

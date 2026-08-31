@@ -1,10 +1,10 @@
-from orchestrator.io.models import BenchmarkQuestion
-from orchestrator.schedulers.aimd.config import AdaptiveAimdSchedulerConfig
-from orchestrator.schedulers.aimd.controller import (
+from orchestrator.domain.models.question import BenchmarkQuestion
+from orchestrator.domain.scheduling.aimd.config import AdaptiveAimdSchedulerConfig
+from orchestrator.domain.scheduling.aimd.controller import (
     AdaptiveAimdController,
     AIMDPhase,
 )
-from orchestrator.schedulers.common.models import AttemptOutcome
+from orchestrator.domain.scheduling.common.models import AttemptOutcome
 
 
 def test_controller_increases_concurrency_after_successes() -> None:

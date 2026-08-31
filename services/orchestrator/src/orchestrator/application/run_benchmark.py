@@ -1,4 +1,3 @@
-import time
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -6,17 +5,19 @@ from orchestrator.application.config import (
     RunConfig,
     Settings,
 )
-from orchestrator.events.producer import RedisEventProducer
-from orchestrator.events.redis import redis_client
-from orchestrator.grader.substring import SubstringGrader
-from orchestrator.inference_client.client import InferenceClient
-from orchestrator.io.models import BenchmarkQuestion
-from orchestrator.report.collector import MetricsCollector
-from orchestrator.report.models import BenchmarkReport
-from orchestrator.schedulers.aimd import AdaptiveAimdScheduler
-from orchestrator.schedulers.aimd.config import AdaptiveAimdSchedulerConfig
-from orchestrator.schedulers.fixed import FixedConcurrencyScheduler
-from orchestrator.schedulers.fixed.config import FixedConcurrencySchedulerConfig
+from orchestrator.domain.events import RunCompleted
+from orchestrator.domain.grading.substring import SubstringGrader
+from orchestrator.domain.models.question import BenchmarkQuestion
+from orchestrator.domain.scheduling.aimd import AdaptiveAimdScheduler
+from orchestrator.domain.scheduling.aimd.config import AdaptiveAimdSchedulerConfig
+from orchestrator.domain.scheduling.fixed import FixedConcurrencyScheduler
+from orchestrator.domain.scheduling.fixed.config import FixedConcurrencySchedulerConfig
+from orchestrator.infrastructure.inference_client.client import InferenceClient
+from orchestrator.infrastructure.messaging.redis.client import redis_client
+from orchestrator.infrastructure.messaging.redis.producer import RedisEventProducer
+from orchestrator.infrastructure.persistence.db import SessionLocal
+from orchestrator.infrastructure.persistence.repositories.run import RunRepository
+from orchestrator.interfaces.api.schemas.report import BenchmarkReport
 
 
 async def execute_benchmark(
@@ -26,6 +27,18 @@ async def execute_benchmark(
     questions: list[BenchmarkQuestion],
     run_id: UUID,
 ) -> BenchmarkReport:
+    started_at = datetime.now(UTC)
+
+    async with SessionLocal() as session:
+        run_repository = RunRepository(session)
+
+        await run_repository.mark_started(
+            run_id=run_id,
+            started_at=started_at,
+        )
+
+        await session.commit()
+
     grader = SubstringGrader()
 
     async with InferenceClient(
@@ -41,21 +54,25 @@ async def execute_benchmark(
             event_producer=producer,
         )
 
-        started_at = time.monotonic()
+        await scheduler.run_questions(questions, run_id=run_id)
 
-        results = await scheduler.run_questions(questions, run_id=run_id)
+    finished_at = datetime.now(UTC)
 
-        total_wall_time_sec = time.monotonic() - started_at
+    async with SessionLocal() as session:
+        run_repository = RunRepository(session)
 
-    summary = MetricsCollector().summarize(
-        results=results,
-        total_wall_time_sec=total_wall_time_sec,
-    )
+        await run_repository.mark_finished(
+            run_id=run_id,
+            finished_at=finished_at,
+        )
 
-    return BenchmarkReport(
-        generated_at=datetime.now(UTC),
-        summary=summary,
-        results=results,
+        await session.commit()
+
+    await producer.publish_run_completed(
+        RunCompleted(
+            run_id=run_id,
+            finished_at=finished_at,
+        )
     )
 
 

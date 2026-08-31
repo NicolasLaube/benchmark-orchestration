@@ -10,3 +10,4 @@ export type Run = {
     completed: number
     total: number
 }
+

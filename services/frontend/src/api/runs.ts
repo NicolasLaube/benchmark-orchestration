@@ -1,3 +1,4 @@
+import type { BenchmarkReport } from "../types/report"
 import type { Run } from "../types/run"
 
 export async function createRun(file: File): Promise<Run> {
@@ -21,6 +22,17 @@ export async function createRun(file: File): Promise<Run> {
 
 export async function getRun(runId: string): Promise<Run> {
     const response = await fetch(`http://localhost:3000/runs/${runId}`)
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch run: ${response.status}`)
+
+    }
+
+    return response.json()
+}
+
+export async function getReport(runId: string): Promise<BenchmarkReport> {
+    const response = await fetch(`http://localhost:3000/runs/${runId}/report`)
 
     if (!response.ok) {
         throw new Error(`Failed to fetch run: ${response.status}`)

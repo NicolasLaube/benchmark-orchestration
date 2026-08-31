@@ -1,6 +1,6 @@
 # tests/test_grader.py
 
-from orchestrator.grader.substring import SubstringGrader
+from orchestrator.domain.grading.substring import SubstringGrader
 
 
 def test_substring_grader_is_case_insensitive() -> None:
