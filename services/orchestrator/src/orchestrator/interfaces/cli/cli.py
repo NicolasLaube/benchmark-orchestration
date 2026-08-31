@@ -1,6 +1,6 @@
 import asyncio
 from typing import Annotated
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import typer
 from orchestrator.application.build_report import build_report
@@ -10,9 +10,13 @@ from orchestrator.application.config import (
     Settings,
 )
 from orchestrator.application.run_benchmark import execute_benchmark
+from orchestrator.domain.models.question import BenchmarkQuestion
 from orchestrator.domain.scheduling.aimd.config import AdaptiveAimdSchedulerConfig
 from orchestrator.domain.scheduling.fixed.config import FixedConcurrencySchedulerConfig
 from orchestrator.infrastructure.io.load_questions import load_questions
+from orchestrator.infrastructure.persistence.db import SessionLocal
+from orchestrator.infrastructure.persistence.models import RunModel
+from orchestrator.infrastructure.persistence.repositories.run import RunRepository
 from orchestrator.interfaces.cli.json_reporter import JsonReporter
 from orchestrator.interfaces.cli.rich_summary import print_summary
 
@@ -55,7 +59,7 @@ def run_benchmark(
     run_id = uuid4()
 
     asyncio.run(
-        execute_benchmark(
+        _run_benchmark(
             config=config,
             settings=settings,
             questions=questions,
@@ -63,7 +67,35 @@ def run_benchmark(
         )
     )
 
-    report = asyncio.run(build_report(run_id))
+
+async def _run_benchmark(
+    questions: list[BenchmarkQuestion],
+    run_id: UUID,
+    config: RunConfig,
+    settings: Settings,
+) -> None:
+    async with SessionLocal() as session:
+        run_repository = RunRepository(session)
+
+        await run_repository.create(
+            run=RunModel(
+                id=run_id,
+                status="queued",
+                total=0,
+                completed=0,
+            ),
+        )
+
+        await session.commit()
+
+    await execute_benchmark(
+        config=config,
+        settings=settings,
+        questions=questions,
+        run_id=run_id,
+    )
+
+    report = await build_report(run_id)
 
     print_summary(report.summary)
 

@@ -33,7 +33,7 @@ class RunNotFoundError(ValueError):
     """Raised when a run cannot be found."""
 
 
-async def build_report(run_id: UUID):
+async def build_report(run_id: UUID) -> BenchmarkReport:
 
     async with SessionLocal() as session:
         run_repository = RunRepository(session)
@@ -56,6 +56,8 @@ async def build_report(run_id: UUID):
         )
 
         await session.commit()
+
+        return report
 
 
 async def assemble_report(

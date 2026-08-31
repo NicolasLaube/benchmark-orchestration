@@ -1,6 +1,23 @@
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: benchmark
+      POSTGRES_USER: benchmark
+      POSTGRES_PASSWORD: benchmark
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U benchmark -d benchmark"
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
   redis:
     image: redis:7
+
 
   fake-inference:
     build:
@@ -26,8 +43,14 @@ services:
       INFERENCE_ENDPOINT: http://fake-inference:8000/infer
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      DATABASE_URL: postgresql+asyncpg://benchmark:benchmark@postgres:5432/benchmark
+      REDIS_URL: redis://redis:6379/0
 
     depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       fake-inference:
         condition: service_healthy
       redis:
@@ -44,3 +67,13 @@ services:
       - "fixed"
       - "--max-retries"
       - "0"
+
+  migrate:
+    build:
+      context: ./services/orchestrator
+    environment:
+      DATABASE_URL: postgresql+asyncpg://benchmark:benchmark@postgres:5432/benchmark
+    command: uv run alembic upgrade head
+    depends_on:
+      postgres:
+        condition: service_healthy
