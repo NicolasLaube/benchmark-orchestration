@@ -1,4 +1,13 @@
 services:
+  frontend:
+    build:
+      context: ./services/frontend
+
+    ports:
+      - "8080:80"
+
+    depends_on:
+      - orchestrator-api
   ollama:
     image: ollama/ollama
     volumes:

@@ -7,7 +7,7 @@ export async function createRun(file: File): Promise<Run> {
 
     formData.append("file", file)
 
-    const response = await fetch("http://localhost:3000/runs", {
+    const response = await fetch("/api/runs", {
         method: "POST",
         body: formData,
     })
@@ -21,7 +21,7 @@ export async function createRun(file: File): Promise<Run> {
 }
 
 export async function getRun(runId: string): Promise<Run> {
-    const response = await fetch(`http://localhost:3000/runs/${runId}`)
+    const response = await fetch(`/api/runs/${runId}`)
 
     if (!response.ok) {
         throw new Error(`Failed to fetch run: ${response.status}`)
@@ -32,7 +32,7 @@ export async function getRun(runId: string): Promise<Run> {
 }
 
 export async function getReport(runId: string): Promise<BenchmarkReport> {
-    const response = await fetch(`http://localhost:3000/runs/${runId}/report`)
+    const response = await fetch(`/api/runs/${runId}/report`)
 
     if (!response.ok) {
         throw new Error(`Failed to fetch run: ${response.status}`)

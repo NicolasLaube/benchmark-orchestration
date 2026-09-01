@@ -51,7 +51,7 @@ export function RunPage() {
         }
 
         const eventSource = new EventSource(
-            `http://localhost:3000/runs/${runId}/events`
+            `/api/runs/${runId}/events`
         )
 
         eventSource.onmessage = (event) => {
