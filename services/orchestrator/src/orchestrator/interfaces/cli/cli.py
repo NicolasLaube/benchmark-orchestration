@@ -81,7 +81,7 @@ async def _run_benchmark(
             run=RunModel(
                 id=run_id,
                 status="queued",
-                total=0,
+                total=len(questions),
                 completed=0,
             ),
         )
