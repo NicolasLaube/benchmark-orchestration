@@ -1,5 +1,6 @@
 import type { BenchmarkReport } from "../types/report"
 import type { Run } from "../types/run"
+import { authenticatedFetch } from "../auth/keycloak"
 
 export async function createRun(file: File): Promise<Run> {
 
@@ -7,7 +8,7 @@ export async function createRun(file: File): Promise<Run> {
 
     formData.append("file", file)
 
-    const response = await fetch("/api/runs", {
+    const response = await authenticatedFetch("/api/runs", {
         method: "POST",
         body: formData,
     })
@@ -21,7 +22,7 @@ export async function createRun(file: File): Promise<Run> {
 }
 
 export async function getRun(runId: string): Promise<Run> {
-    const response = await fetch(`/api/runs/${runId}`)
+    const response = await authenticatedFetch(`/api/runs/${runId}`)
 
     if (!response.ok) {
         throw new Error(`Failed to fetch run: ${response.status}`)
@@ -32,7 +33,7 @@ export async function getRun(runId: string): Promise<Run> {
 }
 
 export async function getReport(runId: string): Promise<BenchmarkReport> {
-    const response = await fetch(`/api/runs/${runId}/report`)
+    const response = await authenticatedFetch(`/api/runs/${runId}/report`)
 
     if (!response.ok) {
         throw new Error(`Failed to fetch run: ${response.status}`)

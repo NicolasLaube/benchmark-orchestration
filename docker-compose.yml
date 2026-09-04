@@ -77,6 +77,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://orchestrator:orchestrator@postgres:5432/orchestrator
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      KEYCLOAK_URL: http://keycloak:8080
+      ISSUER_BASE_URL: http://localhost:8081
     
     ports:
     - "3000:3000"
@@ -146,6 +148,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    command:
+      - start-dev
+      - --hostname=http://localhost:8081
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8081:8080"
   
 volumes:
   ollama-data:
