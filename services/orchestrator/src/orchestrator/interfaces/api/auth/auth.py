@@ -5,20 +5,9 @@ import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-KEYCLOAK_URL = os.getenv(
-    "KEYCLOAK_URL",
-    "http://localhost:8081",
-)
-
-ISSUER_BASE_URL = os.getenv(
-    "ISSUER_BASE_URL",
-    "http://localhost:8081",
-)
-
-REALM = os.getenv(
-    "REALM",
-    "benchmark-orchestrator",
-)
+KEYCLOAK_URL = os.environ["KEYCLOAK_URL"]
+ISSUER_BASE_URL = os.environ["ISSUER_BASE_URL"]
+REALM = os.environ["KEYCLOAK_REALM"]
 
 
 ISSUER = f"{ISSUER_BASE_URL}/realms/{REALM}"

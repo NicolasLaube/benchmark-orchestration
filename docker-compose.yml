@@ -79,6 +79,7 @@ services:
       REDIS_PORT: 6379
       KEYCLOAK_URL: http://keycloak:8080
       ISSUER_BASE_URL: http://localhost:8081
+      KEYCLOAK_REALM: benchmark-orchestrator
     
     ports:
     - "3000:3000"
