@@ -3,7 +3,7 @@ import json
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from orchestrator.application.build_report import build_report
 from orchestrator.application.config import (
@@ -23,9 +23,13 @@ from orchestrator.infrastructure.persistence.repositories.report import (
     RunReportRepository,
 )
 from orchestrator.infrastructure.persistence.repositories.run import RunRepository
+from orchestrator.interfaces.api.auth.auth import verify_access_token
 from orchestrator.interfaces.api.load import load_questions_from_upload
 
-runs_router = APIRouter(prefix="/runs")
+runs_router = APIRouter(
+    prefix="/runs",
+    dependencies=[Depends(verify_access_token)],
+)
 
 
 @runs_router.post("", tags=["runs"])

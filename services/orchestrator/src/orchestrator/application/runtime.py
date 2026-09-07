@@ -27,7 +27,7 @@ from orchestrator.infrastructure.inference_client.client import (
     InferenceRateLimitedError,
 )
 from orchestrator.infrastructure.logging.log_event import log_event
-from orchestrator.infrastructure.messaging.redis.producer import RedisEventProducer
+from orchestrator.infrastructure.messaging.event_producer import EventProducer
 from orchestrator.interfaces.cli.render import (
     RichProgressView,
 )
@@ -46,7 +46,7 @@ class SchedulerRuntime:
         event_logger: EventLogger = log_event,
         console: Console | None = None,
         progress_view_factory: ProgressViewFactory | None = RichProgressView,
-        event_producer: RedisEventProducer,
+        event_producer: EventProducer,
     ) -> None:
         # SchedulerRuntime is initialized with an inference client, a grader, and optional logging
         # and console parameters.

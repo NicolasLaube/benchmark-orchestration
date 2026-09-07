@@ -4,6 +4,9 @@ import type { Run } from "../types/run"
 import { getRun } from "../api/runs";
 import { RunProgress } from "../components/RunProgress";
 import { RunHeader } from "../components/RunHeader";
+import { fetchEventSource } from "@microsoft/fetch-event-source"
+import { keycloak } from "../auth/keycloak"
+
 
 type RunEvent = {
     type: string,
@@ -46,47 +49,64 @@ export function RunPage() {
 
 
     useEffect(() => {
-        if (!runId) {
+        if (!runId || !keycloak.token) {
             return
         }
 
-        const eventSource = new EventSource(
-            `/api/runs/${runId}/events`
-        )
+        const controller = new AbortController()
 
-        eventSource.onmessage = (event) => {
-            const data: RunEvent = JSON.parse(event.data)
+        async function connectToEvents() {
+            await fetchEventSource(
+                `/api/runs/${runId}/events`,
+                {
+                    method: "GET",
 
-            setRun((currentRun) => {
-                if (!currentRun) {
-                    return currentRun
+                    headers: {
+                        Authorization: `Bearer ${keycloak.token}`,
+                        Accept: "text/event-stream",
+                    },
+
+                    signal: controller.signal,
+
+                    onmessage(event) {
+                        const data: RunEvent = JSON.parse(event.data)
+
+                        setRun((currentRun) => {
+                            if (!currentRun) {
+                                return currentRun
+                            }
+
+                            if (data.type === "run_completed") {
+                                return {
+                                    ...currentRun,
+                                    status: "finished",
+                                    completed: currentRun.total,
+                                }
+                            }
+
+                            return {
+                                ...currentRun,
+                                status: data.status,
+                                completed: data.completed,
+                                total: data.total,
+                            }
+                        })
+                    },
+
+                    onerror(error) {
+                        console.error("SSE error:", error)
+                        throw error
+                    },
                 }
-
-                if (data.type === "run_completed") {
-                    return {
-                        ...currentRun,
-                        status: "finished",
-                        completed: currentRun.total,
-                    }
-                }
-
-                return {
-                    ...currentRun,
-                    status: data.status,
-                    completed: data.completed,
-                    total: data.total,
-                }
-            })
+            )
         }
 
-        eventSource.onerror = () => {
-            eventSource.close()
-        }
+        connectToEvents()
 
         return () => {
-            eventSource.close()
+            controller.abort()
         }
-    }, [runId])
+    }, [runId, keycloak.token])
 
     if (error) {
         return <p>{error}</p>

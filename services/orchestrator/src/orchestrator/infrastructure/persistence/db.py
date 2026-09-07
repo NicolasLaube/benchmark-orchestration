@@ -5,10 +5,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://orchestrator:orchestrator@localhost:5432/orchestrator",
-)
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 
 engine = create_async_engine(
