@@ -16,9 +16,6 @@ keycloak.init({
   if (!authenticated) {
     return;
   }
-  console.log("Keycloak authenticated:", authenticated);
-  console.log("Access token", keycloak.token);
-  console.log("Parsed token", keycloak.tokenParsed)
 
 
   ReactDOM.createRoot(document.getElementById('root')!).render(

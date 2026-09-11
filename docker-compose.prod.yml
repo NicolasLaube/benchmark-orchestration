@@ -1,17 +1,18 @@
 services:
   frontend:
-    build:
-      context: ./services/frontend
-      args:
-        VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
+    image: ${ECR_REGISTRY}/benchmark-frontend:${IMAGE_TAG:-latest}
 
     ports:
-      - "8080:80"
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
 
     depends_on:
       - orchestrator-api
-    
-    
+
+    volumes:
+      - certbot_www:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt:ro
+
   ollama:
     image: ollama/ollama
     volumes:
@@ -30,10 +31,11 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
-    command: ["pull", "${MODEL_NAME:-qwen2.5:0.5b}"]
+    command: 
+      - pull
+      - ${MODEL_NAME:-qwen2.5:0.5b}
   inference-service:
-    build:
-      context: ./services/inference_service
+    image: ${ECR_REGISTRY}/benchmark-inference:${IMAGE_TAG:-latest}
     
     depends_on:
       ollama-init:
@@ -55,18 +57,18 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434
       MODEL_NAME: ${MODEL_NAME:-qwen2.5:0.5b}
       HOST: 0.0.0.0
-      PORT: 8000
+      PORT: ${INFERENCE_PORT:-8000}
       OLLAMA_TIMEOUT_SEC: 120
 
-    command: 
+    command:
       - "--rpm"
-      - "60"
+      - "${INFERENCE_RPM:-60}"
       - "--max-concurrency"
-      - "4"
+      - "${INFERENCE_MAX_CONCURRENCY:-4}"
 
   orchestrator-api:
-    build:
-      context: ./services/orchestrator
+    image: ${ECR_REGISTRY}/benchmark-orchestrator:${IMAGE_TAG:-latest}
+
     depends_on:
       inference-service:
         condition: service_healthy
@@ -77,16 +79,14 @@ services:
       migrate:
         condition: service_completed_successfully
     environment:
-      INFERENCE_ENDPOINT: http://inference-service:8000/infer
-      DATABASE_URL: postgresql+asyncpg://orchestrator:orchestrator@postgres:5432/orchestrator
+      INFERENCE_ENDPOINT: http://inference-service:${INFERENCE_PORT:-8000}/infer
+      DATABASE_URL: ${DATABASE_URL}
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: ${REDIS_PORT:-6379}
+
       KEYCLOAK_URL: http://keycloak:8080
-      ISSUER_BASE_URL: http://localhost:8081
-      KEYCLOAK_REALM: benchmark-orchestrator
-    
-    ports:
-    - "3000:3000"
+      ISSUER_BASE_URL: ${KEYCLOAK_PUBLIC_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
 
     command:
       - uv
@@ -96,32 +96,31 @@ services:
       - --host
       - 0.0.0.0
       - --port
-      - "3000"
+      - "${ORCHESTRATOR_PORT:-3000}"
 
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: orchestrator
-      POSTGRES_PASSWORD: orchestrator
-      POSTGRES_DB: orchestrator
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orchestrator -d orchestrator"]
+      test: [
+          "CMD-SHELL", 
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
 
   redis:
     image: redis:7
-    ports:
-      - "6379:6379"
 
   persistence-consumer:
-    build:
-      context: ./services/orchestrator
+    image: ${ECR_REGISTRY}/benchmark-orchestrator:${IMAGE_TAG:-latest}
 
     depends_on:
       postgres:
@@ -130,9 +129,9 @@ services:
         condition: service_started
 
     environment:
-      DATABASE_URL: postgresql+asyncpg://orchestrator:orchestrator@postgres:5432/orchestrator
+      DATABASE_URL: ${DATABASE_URL}
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: ${REDIS_PORT:-6379}
 
     command:
       - python
@@ -140,8 +139,8 @@ services:
       - orchestrator.infrastructure.messaging.redis.persistence_consumer
   
   migrate:
-    build:
-      context: ./services/orchestrator
+    image: ${ECR_REGISTRY}/benchmark-orchestrator:${IMAGE_TAG:-latest}
+
     command:
       - uv
       - run
@@ -149,7 +148,7 @@ services:
       - upgrade
       - head
     environment:
-      DATABASE_URL: postgresql+psycopg://orchestrator:orchestrator@postgres:5432/orchestrator
+      DATABASE_URL: ${DATABASE_URL_SYNC}
     depends_on:
       postgres:
         condition: service_healthy
@@ -157,19 +156,33 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     command:
-      - start-dev
-      - --hostname=http://localhost:8081
+    - start-dev
+    - --import-realm
+    - --hostname=${KEYCLOAK_PUBLIC_URL}
+    - --proxy-headers=xforwarded
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - keycloak_data:/opt/keycloak/data
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     ports:
       - "8081:8080"
+
+  certbot:
+    image: certbot/certbot:latest
+
     volumes:
-      - ./keycloak/export:/opt/keycloak/data/export
-      - keycloak_data:/opt/keycloak/data
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+
+    profiles:
+      - tools
   
 volumes:
   ollama-data:
   postgres_data:
   keycloak_data:
+  certbot_www:
+  certbot_conf:
                     
