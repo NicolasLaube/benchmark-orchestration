@@ -12,3 +12,6 @@ results
 *.pyo
 *.pyd
 .DS_Store
+
+keycloak/export/
+keycloak/realm-export*.json
