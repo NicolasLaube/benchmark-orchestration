@@ -1,0 +1,26 @@
+{
+  "realm" : "benchmark-orchestrator",
+  "users" : [ {
+    "id" : "65e72f9a-80ba-4570-ae51-769092a0906e",
+    "username" : "enicolas.laube@icloud.com",
+    "firstName" : "Nicolas",
+    "lastName" : "LAUBÉ",
+    "email" : "enicolas.laube@icloud.com",
+    "emailVerified" : false,
+    "enabled" : true,
+    "createdTimestamp" : 1788443424571,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "dc2e67df-2db7-45d3-a71a-7538c0c7bd0f",
+      "type" : "password",
+      "createdDate" : 1788443454485,
+      "secretData" : "{\"value\":\"L/RlHuNBNUEcvmaoknvz0foCKNwMjTAuICpt11wnKOU=\",\"salt\":\"E3fjwNcCOxexL7d+k6HkVQ==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":5,\"algorithm\":\"argon2\",\"additionalParameters\":{\"hashLength\":[\"32\"],\"memory\":[\"7168\"],\"type\":[\"id\"],\"version\":[\"1.3\"],\"parallelism\":[\"1\"]}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-benchmark-orchestrator" ],
+    "notBefore" : 0,
+    "groups" : [ ]
+  } ]
+}

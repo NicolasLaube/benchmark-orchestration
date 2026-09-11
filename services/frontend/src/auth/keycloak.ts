@@ -2,7 +2,7 @@ import Keycloack from "keycloak-js";
 
 export const keycloak = new Keycloack(
     {
-        "url": "http://localhost:8081",
+        "url": import.meta.env.VITE_KEYCLOAK_URL,
         "realm": "benchmark-orchestrator",
         "clientId": "frontend",
 
@@ -17,7 +17,7 @@ export async function authenticatedFetch(
         await keycloak.updateToken(30);
     } catch {
         await keycloak.login({
-            redirectUri: window.location.href,
+            redirectUri: window.location.origin,
         });
 
         throw new Error("Authentication required");
@@ -36,7 +36,7 @@ export async function authenticatedFetch(
 
     if (response.status === 401) {
         await keycloak.login({
-            redirectUri: window.location.href,
+            redirectUri: window.location.origin,
         });
     }
 
